@@ -13,16 +13,18 @@
 | Install/run README | Root `README.md`, `.env.example` |
 | Final demonstration, each member explains their part | Suggested sequence and honest contribution record below |
 
-## Suggested demonstration (8–10 minutes)
+## Suggested demonstration (10–12 minutes)
 
 1. Run `npm start`; register a real student with a public LeetCode handle. Explain HTML/JS → Express → MongoDB.
 2. Show the synchronized difficulty totals, contest rating, activity calendar and accepted submissions. Explain that submission attempts differ from new unique solves.
 3. Edit the student profile; demonstrate invalid input and a valid save. Sign out and sign in to prove authentication and persistence.
-4. Register another actual team member in a separate browser/session. Compare on the college leaderboard and use difficulty/rating, friends and period filters. Missing historical baselines are expected for new registrations.
+4. Register another actual team member in a separate browser/session. Compare on the college leaderboard and use difficulty/rating, following and period filters. Missing historical baselines are expected for new registrations.
 5. Create a private group, copy the invitation code, join with the second account, edit the group, post a message and inspect the group leaderboard. Try a non-member read to explain server-side authorization.
 6. Create and join a group challenge. Explain the join-time baseline and observed progress limitation.
-7. In an administrator account, verify a student, import the supplied-format roster, and download Excel/CSV. Demonstrate a rejected invalid row and protected account deletion.
-8. Show analytics, themes and mobile layout. Finish with tests and upstream attribution.
+7. Organise a short contest with two LeetCode problems, join it with the second account, solve one on LeetCode during the window and show the standings, penalty and problem analysis. Share a solution after it ends.
+8. Set one account's visibility to “Only me” and show it disappearing from the other account's leaderboard.
+9. In an administrator account, verify a student, import the supplied-format roster, and download Excel/CSV. Demonstrate a rejected invalid row and protected account deletion.
+10. Show analytics, the following feed, themes and mobile layout. Finish with tests and upstream attribution.
 
 Use real accounts and data for the final presentation. Tests create disposable fixtures in a different MongoDB process; they are not installed sample data. Do not claim long-term history immediately after signup.
 

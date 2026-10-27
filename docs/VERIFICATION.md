@@ -1,11 +1,11 @@
 # Verification
 
-Verified locally on Windows with Node.js 24.19.0 and real MongoDB on 27 October 2026.
+Verified locally on Windows with Node.js 24.19.0 and real MongoDB on 27 October 2026, and re-run on Linux with Node.js 26 on 28 October 2026 after adding visibility, contests and the new feed.
 
 ## Automated checks
 
-- `npm test`: **26 passed, 0 failed**. Uses a separate disposable MongoDB database.
-- `npm run check`: **41 JavaScript modules** passed syntax checks.
+- `npm test`: **30 passed, 0 failed**. Uses a separate disposable MongoDB database.
+- `npm run check`: **44 JavaScript modules** passed syntax checks.
 - `npm audit --omit=dev --audit-level=moderate`: **0 vulnerabilities** after pinning ExcelJS's compatible UUID dependency to its patched release.
 
 Coverage includes:
@@ -18,6 +18,9 @@ Coverage includes:
 - Follows, cohort filters, tied ranks/percentiles, progress baselines and daily snapshot uniqueness.
 - UTC streaks with gaps and yesterday's activity.
 - Challenge permissions, join-time baseline, duplicate joins and frozen results.
+- Profile visibility: group-only and private students hidden from leaderboards, group leaderboards, profiles and follows; visible to selected-group members, themselves and admins.
+- Contests: problem validation and duplicates, invitation-code joining, problems hidden before the start, grading inside the window (wrong attempts, ignored compile errors and out-of-window or unrelated submissions), ties and penalties, retention of submissions that leave LeetCode's recent list, organiser-only refresh/delete, finalisation with a winner event, and solution sharing after the end.
+- Feed: milestone thresholds (and none on a first sync), hidden sync events, and practice picks from people you follow.
 - CSV and real XLSX import, invalid-row rejection, file-size rejection and readable XLSX export.
 - Student verification, department/section CRUD guards and relational student deletion.
 - Unconfigured Google OAuth and invalid callback state.

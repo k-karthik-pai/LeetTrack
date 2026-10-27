@@ -47,11 +47,14 @@ Set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in `.env`, then restart. The G
 
 - Cookie-session signup, login, logout, Google OAuth and password changes.
 - Editable profiles, college verification, LeetCode handle linking and duplicate-handle checks.
+- Profile visibility: everyone in the college, only members of selected groups, or only yourself.
 - Real difficulty totals, accepted submissions, contest ratings/history, activity calendars and observed streaks.
-- College, followed-friend and private-group leaderboards; search, ascending/descending sort and pagination.
-- Overall and cohort percentiles, daily rank/solve snapshots, weekly/monthly gains and friend comparison.
-- Private group CRUD, invitation codes/rotation, member-only leaderboards and messages.
+- College, following and private-group leaderboards; search, ascending/descending sort and pagination.
+- Overall and cohort percentiles, daily rank/solve snapshots, weekly/monthly gains and comparison with people you follow.
+- Private group CRUD, invitation codes/rotation, member-only leaderboards and a chronological group chat.
 - Group and college challenges with join-time baselines, progress and frozen final results.
+- LeetCode-graded contests: organisers choose problems, start time, duration and penalty, invite a group or share a code; standings, per-problem analysis and shared solutions.
+- Following feed with milestones, college top-10/3/1 entries and contest wins, plus practice picks and weekly progress for the people you follow.
 - Student management, validated CSV/XLSX imports and CSV/XLSX exports.
 - LeetCode-style top navigation, compact profile dashboard, charcoal/orange styling, light/dark themes and responsive layouts.
 
@@ -62,8 +65,12 @@ Set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in `.env`, then restart. The G
 - **Streak:** consecutive UTC days with submissions, computed only over the calendar LeetCode provides. “Longest” is the longest observed streak, not a guaranteed lifetime record.
 - **Rank:** competition rank (1, 1, 3 for ties). Analyzer's difficulty tie-breakers determine display order within ties.
 - **Percentile:** other registered students with a strictly lower metric divided by all other registered students × 100. A singleton cohort is 100%; equal scores share a percentile. All registered campus students are included, including those waiting for verification. No roster-only or sample students are counted.
-- **Weekly/monthly gain:** current solved count minus the latest snapshot on/before the 7/30-day cutoff for the same handle. `—` means a baseline does not exist; those students remain unranked for that period. Historical data is not fabricated for new accounts.
+- **Weekly/monthly gain:** current solved count minus the latest snapshot on/before the 7/30-day cutoff for the same handle. Until such a baseline exists, the dashboard and analytics show solves since the first snapshot (“Since 24 Oct”) instead; leaderboard period rankings still require a full baseline and leave those students unranked. Historical data is not fabricated for new accounts.
+- **Standing:** the dashboard shows “Top X%”, where X = rank ÷ registered students × 100.
 - **Challenges:** new solves observed after joining and before the end. Finalization uses the last observed saved total before a later sync. LeetCode does not expose a complete timestamped history of distinct first solves, so these are observed progress challenges, not tamper-proof competitions.
+- **Contests:** a problem counts when LeetCode records an Accepted submission for it between the start and end time. Score is the sum of solved problems' points; ties are broken by finish time = last accepted solution (minutes from start) + penalty × wrong attempts before each accepted solution. Compile errors are not penalised. Submissions are read from LeetCode's public list of each participant's 20 most recent submissions every two minutes and whenever the contest page is opened; seen submissions are stored, so they still count after leaving that list. Results are finalised five minutes after the end. Problems are hidden from participants until the start. LeetCode does not expose solution code, so participants paste it themselves after the contest.
+- **Visibility:** students hidden from a viewer are left out of leaderboards (ranks recompute among visible students), the dashboard leaders, group leaderboards, challenge and feed lists, and their profile and follow endpoints return 404. Administrators always see everyone. Contest standings show everyone who chose to join that contest.
+- **Feed:** shows milestones (solved-count thresholds, first and later Hard counts, contest-rating peaks, 7/14/30/50/100/200/365-day streaks), entries into the college top 10/3/1 and contest wins from you and the people you follow. The first sync of a handle creates no milestones. Practice picks are problems people you follow solved in the last 7 days that are not among your recent accepted submissions; LeetCode only shares the latest 20, so a pick may be something you solved long ago.
 - **Imports:** create a roster, not passwords or active login accounts. Students register themselves and are verified by admins. Existing registered profiles are preserved. `.csv` and `.xlsx` are supported; save legacy `.xls` as `.xlsx` first.
 - **Snapshots:** one upserted row per user per UTC day; earlier dates are retained. Changing the handle clears that user's snapshots; changing a handle during an active joined challenge is blocked.
 
@@ -82,7 +89,7 @@ Tests use a separate, disposable MongoDB instance and never populate your develo
 ```text
 public/                 Vanilla HTML, CSS and JavaScript; Chart.js and Lucide served locally
 backend/                Adapted Rankboard User model, routes, auth/profile/social controllers
-server/                 Express setup, MongoDB, groups, challenges, admin and sync services
+server/                 Express setup, MongoDB, groups, challenges, contests, visibility, admin and sync services
 integrations/analyzer/  JavaScript ports of Analyzer provider and ranking modules
 upstream/               Pinned original source snapshots from both repositories
 test/                   Real-MongoDB integration and metric/provider tests
@@ -100,7 +107,7 @@ The application is a normal Express server. It needs a running Node process, Mon
 
 `Dockerfile` and `compose.yaml` are provided for a local container setup; they were not executed on this machine because Docker is unavailable. Supply `SESSION_SECRET` in `.env` before `docker compose up --build`. The local compose deployment uses HTTP/development cookies and binds the app to localhost; adapt it before public production hosting.
 
-LeetCode's GraphQL service is an upstream dependency without a guaranteed public API contract. This app uses public data only and does not request LeetCode credentials. Default sync cooldown is five minutes and scheduled sync is hourly; configure them in `.env`. Run one application instance for the built-in scheduler. No external email or notification service is required or used.
+LeetCode's GraphQL service is an upstream dependency without a guaranteed public API contract. This app uses public data only and does not request LeetCode credentials. Default sync cooldown is five minutes and scheduled sync is hourly; contest results are checked every two minutes while a contest is open. Configure sync timing in `.env`. Run one application instance for the built-in schedulers. On Render's free plan the service sleeps when idle, which pauses scheduled work until the next visit; see [keeping the service awake](docs/DEPLOYMENT.md#7-keeping-the-free-service-awake). No external email or notification service is required or used.
 
 ## Capstone submission
 

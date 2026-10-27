@@ -103,3 +103,16 @@ Before sharing the URL, check this flow against the hosted service:
 7. Manual sync works from the hosted server. Upstream LeetCode availability can differ from the laptop, so local success alone does not verify hosted syncing.
 
 The `render.yaml` at the repository root describes a free Node web service in Singapore and prompts for the Atlas URI. The Atlas project `LeetTrack` and free AWS Singapore cluster `leettrack` have been created. Database-user credentials and Render service configuration are still required before the app is live. Google OAuth remains optional and requires a separate Google Cloud client.
+
+## 7. Keeping the free service awake
+
+Render's free web services sleep after about 15 minutes without traffic. While asleep, the hourly LeetCode sync, daily snapshots and the two-minute contest checker do not run; the first visit wakes the service (this takes up to a minute) and catches up. To keep it awake, create a free monitor on [UptimeRobot](https://uptimerobot.com) or [cron-job.org](https://cron-job.org) that requests `https://YOUR-SERVICE.onrender.com/api/health` every 10 minutes. This matters most during contests and for building daily progress history.
+
+## 8. When a push does not deploy
+
+`render.yaml` sets `branch: main` and `autoDeployTrigger: commit`, but the Render dashboard decides what actually happens:
+
+1. **Manual Deploy → Deploy latest commit** updates the site immediately and shows whether the build succeeds.
+2. **Events:** “Deploy failed” entries mean pushes are detected but the build or health check fails; open that deploy's log.
+3. **Settings → Build & Deploy:** the repository must be the one you push to, branch `main`, and Auto-Deploy *On Commit*. Dashboard settings override `render.yaml` unless the service was created from the Blueprint.
+4. **GitHub access:** Render's GitHub app must be installed with access to the repository (GitHub → Settings → Applications → Render). Without it, Render never sees new commits.

@@ -10,14 +10,17 @@ A college coding-progress portal with student and administrator roles. Mandatory
 |---|---|---|
 | S1 | As a student, I can register, sign in and sign out. | Password is hashed; logout revokes the session; bad credentials show an error. |
 | S2 | As a student, I can sign in with Google. | Configured OAuth validates identity; unconfigured environments show only working email login. |
-| S3 | As a student, I can edit my profile and link LeetCode. | Name, email, required LeetCode handle, bio and goal are validated on both sides; no academic fields are collected. |
+| S3 | As a student, I can edit my profile and link LeetCode. | Name, email, required LeetCode handle and bio are validated on both sides; no academic fields are collected. |
 | S4 | As a student, I can see real progress. | Login/linking/manual/scheduled sync update totals, ratings, calendar, accepted submissions and snapshots. Failed upstream requests retain previous data. |
-| S5 | As a student, I can compare with my college and cohort. | Difficulty/rating/week/month rankings support college, friends, group, search, sort and pagination. |
+| S5 | As a student, I can compare with my college and cohort. | Difficulty/rating/week/month rankings support college, following, group, search, sort and pagination. |
 | S6 | As a student, I can understand my percentile and history. | Formula and tie rules are defined; snapshots record rank and percentile; missing baselines remain missing. |
 | S7 | As a student, I can create, read, update and delete private groups. | Owner manages the group; invitation code permits college peers to join; non-members cannot read it. |
-| S8 | As a student, I can follow friends and share group updates. | Following feeds omit private group messages; private feeds require membership. |
+| S8 | As a student, I can follow classmates and share group updates. | The following feed shows milestones, rank climbs and contest wins, never private group messages; group chat requires membership and reads oldest to newest. |
 | S9 | As a group owner, I can create and manage challenges. | Members join with a baseline; new observed solves count; expired results freeze. |
-| S10 | As a student, I can analyze my activity. | Daily/weekly/monthly submissions, heatmap, difficulty, rating, records and friend comparisons are available. |
+| S10 | As a student, I can analyze my activity. | Daily/weekly/monthly submissions, heatmap, difficulty, rating, records and comparisons with people I follow are available. |
+| S11 | As a student, I can control who sees my profile. | Everyone in the college, members of selected groups, or nobody; hidden students are excluded from rankings, lists and feeds, and their profiles return not found. Admins still see everyone. |
+| S12 | As an organiser, I can run a contest. | Choose LeetCode problems, points, start, duration and penalty; invite a group or by code; problems stay hidden until the start; accepted in-window submissions are graded automatically; standings, per-problem analysis and shared solutions are shown. |
+| S13 | As a student, I get useful practice suggestions. | Problems people I follow solved this week that are not among my recent solves, and a weekly progress list for me and them. |
 | A1 | As an admin, I can manage students. | Student verification, academic edits and guarded deletion are restricted to admins. |
 | A3 | As an admin, I can import and export students. | CSV/XLSX validated imports save rosters, preserve active accounts and produce readable exports. |
 | A4 | As an admin, I can view campus analytics and create challenges. | Student/link/verification totals and aggregate solved counts are computed from registered data. |
@@ -28,7 +31,7 @@ A college coding-progress portal with student and administrator roles. Mandatory
 
 ```text
 +--------------------------------------------------------------------+
-| LeetTrack  Dashboard Leaderboard Analytics Groups Challenges  [User] |
+| LeetTrack  Dashboard Leaderboard Analytics Groups Contests Challenges Community [User] |
 +--------------------------------------------------------------------+
 | Profile                  | Solved totals      | Current streak      |
 | Name / LeetCode handle    | circle + E/M/H     | longest / active    |
