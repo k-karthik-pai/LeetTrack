@@ -5,7 +5,7 @@ services:
     runtime: node
     plan: free
     region: singapore
-    branch: main
+    branch: kushal-branch
     buildCommand: npm ci --omit=dev --ignore-scripts
     startCommand: npm start
     healthCheckPath: /api/health

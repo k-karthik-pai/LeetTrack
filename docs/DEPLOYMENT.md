@@ -15,7 +15,7 @@ Recommended setup: **one Render Node web service + MongoDB Atlas + Google OAuth*
 
 ## 1. Publish the source repository
 
-The source repository is [k-karthik-pai/LeetTrack](https://github.com/k-karthik-pai/LeetTrack). Deploy its `main` branch. Only the **application folder** belongs in this repository; the outer Codex workspace contains local setup tools.
+The source repository is [k-karthik-pai/LeetTrack](https://github.com/k-karthik-pai/LeetTrack). Deploy its `kushal-branch` branch. Only the **application folder** belongs in this repository; the outer Codex workspace contains local setup tools.
 
 Never upload `.env`, `.data/`, `node_modules/`, or database binaries. Keep the upstream attribution in the repository.
 
@@ -35,7 +35,7 @@ Choose **New → Web Service**, connect the repository, and use:
 | Setting | Value |
 |---|---|
 | Language | Node |
-| Branch | `main` |
+| Branch | `kushal-branch` |
 | Root directory | Blank when this application is the repository root |
 | Build command | `npm ci --omit=dev --ignore-scripts` |
 | Start command | `npm start` |
