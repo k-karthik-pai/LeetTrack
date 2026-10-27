@@ -1,0 +1,31 @@
+# Atlas is provisioned separately. Keep credentials in Render's environment.
+services:
+  - type: web
+    name: leettrack-rvce
+    runtime: node
+    plan: free
+    region: singapore
+    branch: main
+    buildCommand: npm ci --omit=dev --ignore-scripts
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeployTrigger: commit
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: HOST
+        value: 0.0.0.0
+      - key: MONGODB_URI
+        sync: false
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: COLLEGE_NAME
+        value: RV College of Engineering
+      - key: COLLEGE_EMAIL_DOMAIN
+        value: rvce.edu.in
+      - key: SYNC_INTERVAL_MINUTES
+        value: "60"
+      - key: SYNC_COOLDOWN_SECONDS
+        value: "300"
+      - key: MONGOMS_DISABLE_POSTINSTALL
+        value: "1"
