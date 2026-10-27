@@ -6,6 +6,7 @@ import { createApp } from './app.js';
 import { ensureDepartments, removeLegacySamples } from './seed.js';
 import { startScheduler } from './leetcode.js';
 import * as models from './models.js';
+if (!process.env.APP_URL && process.env.RENDER_EXTERNAL_URL) process.env.APP_URL = process.env.RENDER_EXTERNAL_URL;
 await mkdir('.data', { recursive: true });
 let secret = process.env.SESSION_SECRET;
 if (!secret) {

@@ -46,4 +46,4 @@ Browser checks use an isolated MongoDB process on a separate host/port; test acc
 
 - Live Google login needs the user's Google Cloud client ID/secret. Token/state validation and configuration handling are implemented; no successful live Google sign-in is claimed.
 - Docker is unavailable on this machine; container files are supplied but not executed.
-- No remote GitHub repository, PR or production deployment was created. Local source, history, run instructions and team workflow are provided.
+- A private GitHub repository and free Atlas cluster have been created. Render deployment is pending its account connection and database credential confirmation; no live production verification is claimed.

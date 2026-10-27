@@ -5,7 +5,7 @@
   "description": "A full-stack college LeetCode community, built with HTML, CSS, JavaScript, Express and MongoDB.",
   "type": "module",
   "engines": {
-    "node": ">=24"
+    "node": "24.x"
   },
   "scripts": {
     "start": "node server/index.js",

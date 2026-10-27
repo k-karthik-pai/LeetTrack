@@ -15,7 +15,7 @@ Recommended setup: **one Render Node web service + MongoDB Atlas + Google OAuth*
 
 ## 1. Publish the source repository
 
-The project currently has local Git history but no remote. Create a repository in your chosen Git account and push the **application folder**, not the outer Codex workspace. The current completed branch is `feature/leettrack`; either choose that branch during deployment or merge it to your team's deployment branch first.
+The source repository is [k-karthik-pai/LeetTrack](https://github.com/k-karthik-pai/LeetTrack). Deploy its `main` branch. Only the **application folder** belongs in this repository; the outer Codex workspace contains local setup tools.
 
 Never upload `.env`, `.data/`, `node_modules/`, or database binaries. Keep the upstream attribution in the repository.
 
@@ -35,7 +35,7 @@ Choose **New → Web Service**, connect the repository, and use:
 | Setting | Value |
 |---|---|
 | Language | Node |
-| Branch | Your completed branch, currently `feature/leettrack` |
+| Branch | `main` |
 | Root directory | Blank when this application is the repository root |
 | Build command | `npm ci --omit=dev --ignore-scripts` |
 | Start command | `npm start` |
@@ -54,7 +54,6 @@ Use `.env.production.example` as the field list. Set these in Render:
 ```text
 NODE_ENV=production
 HOST=0.0.0.0
-APP_URL=https://YOUR-ACTUAL-SERVICE.onrender.com
 MONGODB_URI=<your private Atlas connection string>
 SESSION_SECRET=<a long random private secret>
 COLLEGE_NAME=RV College of Engineering
@@ -64,7 +63,7 @@ SYNC_COOLDOWN_SECONDS=300
 MONGOMS_DISABLE_POSTINSTALL=1
 ```
 
-Render supplies `PORT`; the server reads it automatically. `APP_URL` must be the exact HTTPS origin, without a trailing slash. Production cookies require HTTPS and the server trusts one reverse proxy. Keep `SESSION_SECRET` stable across deployments so existing sessions remain valid.
+Render supplies `PORT` and `RENDER_EXTERNAL_URL`; the server reads them automatically. Set `APP_URL` only to override the origin, for example when using a custom domain. It must be the exact HTTPS origin, without a trailing slash. Production cookies require HTTPS and the server trusts one reverse proxy. Keep `SESSION_SECRET` stable across deployments so existing sessions remain valid.
 
 The college-email restriction applies to signup and Google login. All local parts at `rvce.edu.in` are accepted; it does not force a single branch/batch such as `.cs25`. Password signup validates the domain format but does not prove email ownership. Use verified Google sign-in for identity assurance, or add an email-verification provider before treating password registrations as verified college identities. College administrator verification remains separate.
 
@@ -103,4 +102,4 @@ Before sharing the URL, check this flow against the hosted service:
 6. Two actual accounts can create/join a private group; a non-member cannot access it.
 7. Manual sync works from the hosted server. Upstream LeetCode availability can differ from the laptop, so local success alone does not verify hosted syncing.
 
-No remote repository, Atlas cluster, Google OAuth client or Render deployment has been created by this local setup. These steps describe the concrete connections still needed.
+The `render.yaml` at the repository root describes a free Node web service in Singapore and prompts for the Atlas URI. The Atlas project `LeetTrack` and free AWS Singapore cluster `leettrack` have been created. Database-user credentials and Render service configuration are still required before the app is live. Google OAuth remains optional and requires a separate Google Cloud client.
