@@ -1,0 +1,102 @@
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model Department {
+  id        String    @id @default(uuid())
+  name      String
+  code      String    @unique
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  sections  Section[]
+  students  Student[]
+
+  @@map("departments")
+}
+
+model Section {
+  id           String     @id @default(uuid())
+  name         String
+  departmentId String
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  department   Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  students     Student[]
+
+  @@unique([departmentId, name])
+  @@map("sections")
+}
+
+model Student {
+  id               String       @id @default(uuid())
+  sNo              Int?
+  regNo            String       @unique
+  name             String
+  leetcodeUrl      String
+  leetcodeUsername String
+  departmentId     String?
+  sectionId        String?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  department       Department?  @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  section          Section?     @relation(fields: [sectionId], references: [id], onDelete: SetNull)
+  stats            DailyStat[]
+
+  @@index([regNo])
+  @@index([leetcodeUsername])
+  @@index([departmentId, sectionId])
+  @@map("students")
+}
+
+model DailySnapshot {
+  id            String      @id @default(uuid())
+  snapshotDate  String      @unique
+  totalStudents Int         @default(0)
+  totalSolved   Int         @default(0)
+  avgSolved     Float       @default(0)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  stats         DailyStat[]
+
+  @@index([snapshotDate])
+  @@map("daily_snapshots")
+}
+
+model DailyStat {
+  id             String        @id @default(uuid())
+  snapshotId     String
+  studentId      String
+  easy           Int           @default(0)
+  medium         Int           @default(0)
+  hard           Int           @default(0)
+  total          Int           @default(0)
+  contestRating  Float?
+  globalRank     Int?
+  submissions    Int           @default(0)
+  acceptanceRate Float?
+  activeDays     Int?
+  currentStreak  Int?
+  maxStreak      Int?
+  status         String        @default("PENDING")
+  errorMessage   String?
+  fetchedAt      DateTime      @default(now())
+
+  snapshot       DailySnapshot @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
+  student        Student       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+
+  @@unique([snapshotId, studentId])
+  @@index([snapshotId])
+  @@index([studentId])
+  @@index([status])
+  @@map("daily_stats")
+}

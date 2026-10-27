@@ -1,0 +1,99 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+model Department {
+  id        String    @id @default(cuid())
+  name      String
+  code      String    @unique // e.g. ECE, CSE, EEE, MECH, CIVIL
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+  sections  Section[]
+  students  Student[]
+
+  @@index([code])
+}
+
+model Section {
+  id           String     @id @default(cuid())
+  name         String     // e.g. A, B, C
+  departmentId String
+  department   Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  students     Student[]
+
+  @@unique([departmentId, name])
+  @@index([departmentId])
+}
+
+model Student {
+  id               String      @id @default(cuid())
+  sNo              Int?
+  regNo            String      @unique // Stable unique identity
+  name             String
+  leetcodeUrl      String
+  leetcodeUsername String
+  departmentId     String?
+  department       Department? @relation(fields: [departmentId], references: [id], onDelete: SetNull)
+  sectionId        String?
+  section          Section?    @relation(fields: [sectionId], references: [id], onDelete: SetNull)
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+  stats            DailyStat[]
+
+  @@index([regNo])
+  @@index([leetcodeUsername])
+  @@index([departmentId])
+  @@index([sectionId])
+}
+
+model DailySnapshot {
+  id            String      @id @default(cuid())
+  snapshotDate  String      @unique // YYYY-MM-DD format (Asia/Kolkata server timezone)
+  totalStudents Int         @default(0)
+  totalSolved   Int         @default(0)
+  avgSolved     Float       @default(0)
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  stats         DailyStat[]
+
+  @@index([snapshotDate])
+}
+
+model DailyStat {
+  id             String        @id @default(cuid())
+  snapshotId     String
+  snapshot       DailySnapshot @relation(fields: [snapshotId], references: [id], onDelete: Cascade)
+  studentId      String
+  student        Student       @relation(fields: [studentId], references: [id], onDelete: Cascade)
+  easy           Int           @default(0)
+  medium         Int           @default(0)
+  hard           Int           @default(0)
+  total          Int           @default(0)
+  contestRating  Float?
+  globalRank     Int?
+  submissions    Int?
+  acceptanceRate Float?
+  activeDays     Int?
+  currentStreak  Int?
+  maxStreak      Int?
+  status         String        @default("PENDING") // PENDING, PROCESSING, SUCCESS, NOT_FOUND, RATE_LIMITED, FAILED
+  errorMessage   String?
+  fetchedAt      DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  @@unique([snapshotId, studentId])
+  @@index([snapshotId])
+  @@index([studentId])
+  @@index([status])
+  @@index([total])
+}
+

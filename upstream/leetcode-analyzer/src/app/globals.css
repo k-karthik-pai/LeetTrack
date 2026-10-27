@@ -1,0 +1,94 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: #080A0A;
+    --surface: #121616;
+    --surface-elevated: #151919;
+    --border: #222828;
+  }
+
+  body {
+    background-color: #080A0A;
+    color: #F2F5F2;
+    font-family: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+    position: relative;
+  }
+
+  body::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    pointer-events: none;
+    z-index: 0;
+    background-image: 
+      radial-gradient(circle at 50% 50%, rgba(182, 255, 0, 0.015) 0%, transparent 80%),
+      radial-gradient(rgba(34, 40, 40, 0.15) 1px, transparent 1px);
+    background-size: 100% 100%, 20px 20px;
+    opacity: 0.8;
+  }
+}
+
+/* Custom technical scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0A0C0C;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #222828;
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #B6FF00;
+}
+
+/* Technical card styling */
+.card-obsidian {
+  background: #121616;
+  border: 1px solid #222828;
+}
+
+.card-obsidian:hover {
+  border-color: #2A3030;
+}
+
+/* Custom glow effects */
+.glow-primary {
+  box-shadow: 0 0 20px rgba(182, 255, 0, 0.08);
+}
+
+.glow-orange {
+  box-shadow: 0 0 20px rgba(182, 255, 0, 0.08);
+}
+
+.glow-lime-btn {
+  box-shadow: 0 0 15px rgba(182, 255, 0, 0.25);
+}
+
+/* Tooltip animation */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}

@@ -1,0 +1,22 @@
+# Backend
+backend/node_modules/
+backend/.env
+
+# Frontend
+frontend/node_modules/
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Build folders
+frontend/build/
+backend/build/
+
+# System files
+.DS_Store
+
+
+
