@@ -66,7 +66,8 @@ export async function rankedCollege(college, metric = 'total') {
       const baseline = snapshots.filter(s => s.date <= daysAgo(days)).at(-1);
       return baseline ? Math.max(0, user.stats.total - baseline.total) : null;
     };
-    return { ...publicUser(user), weekly: growth(7), monthly: growth(30), snapshots };
+    const first = snapshots[0];
+    return { ...publicUser(user), weekly: growth(7), monthly: growth(30), trackedSince: first?.date || null, sinceStart: first ? Math.max(0, user.stats.total - first.total) : null, snapshots };
   }), metric);
 }
 export async function snapshotCollege(college) {

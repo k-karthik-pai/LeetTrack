@@ -5,6 +5,8 @@ export const esc = value => String(value ?? '').replace(/[&<>"']/g, c => ({ '&':
 export const icon = (name, cls = '') => `<i data-lucide="${name}" class="icon ${cls}" aria-hidden="true"></i>`;
 export const num = value => value == null ? '—' : Number(value).toLocaleString('en-IN');
 export const date = (value, options = {}) => new Date(value).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', ...options });
+// Period gain, falling back to gains since tracking began while a full 7/30-day baseline is missing.
+export const gain = (u, period) => u[period] != null ? { value: u[period], label: period === 'weekly' ? 'this week' : 'this month' } : u.sinceStart != null ? { value: u.sinceStart, label: `since ${date(u.trackedSince)}` } : { value: null, label: period === 'weekly' ? 'this week' : 'this month' };
 export const timeAgo = value => { const mins = Math.max(0, Math.floor((Date.now() - new Date(value)) / 60000)); return mins < 1 ? 'Just now' : mins < 60 ? `${mins}m ago` : mins < 1440 ? `${Math.floor(mins / 60)}h ago` : `${Math.floor(mins / 1440)}d ago`; };
 export const initials = name => String(name || '?').split(' ').slice(0, 2).map(s => s[0]).join('').toUpperCase();
 export const avatar = (name, i = 0, cls = '') => `<span class="avatar c${i % 4} ${cls}" aria-hidden="true">${esc(initials(name))}</span>`;
