@@ -30,7 +30,12 @@ export function publicUser(user, self = false) {
 }
 // Competition ranks share ties. Percentile is the percentage of registered peers
 // with a STRICTLY LOWER metric; tied students receive the same percentile.
-export function rankUsers(users, metric = 'total') {
+export function rankUsers(users, metric = 'total', handleMissing = true) {
+  if (handleMissing && ['weekly', 'monthly'].includes(metric)) {
+    const known = users.filter(u => u[metric] != null);
+    const missing = users.filter(u => u[metric] == null).sort((a, b) => a.name.localeCompare(b.name));
+    return [...rankUsers(known, metric, false), ...missing.map(u => ({ ...u, rank: null, percentile: null }))];
+  }
   const value = u => Number(u.stats?.[metric] ?? u[metric] ?? 0);
   const indexed = new Map(users.map(u => [String(u.id || u._id), u]));
   const analyzerOrder = computeRankingsAndDiffs(users.map(u => ({ ...u.stats, regNo: String(u.id || u._id), student: { name: u.name, regNo: String(u.id || u._id) }, status: 'SUCCESS' })));

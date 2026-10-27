@@ -77,6 +77,8 @@ test('competition ranks and percentiles share ties correctly', () => {
   const users = [{ id: 'a', name: 'A', stats: { total: 10, hard: 1 } }, { id: 'b', name: 'B', stats: { total: 10, hard: 2 } }, { id: 'c', name: 'C', stats: { total: 2 } }];
   const ranked = rankUsers(users); assert.deepEqual(ranked.map(u => u.rank), [1, 1, 3]); assert.deepEqual(ranked.map(u => u.percentile), [50, 50, 0]); assert.equal(ranked[0].id, 'b');
   assert.equal(rankUsers([users[0]])[0].percentile, 100);
+  const period = rankUsers([{ ...users[0], weekly: 3 }, { ...users[1], weekly: null }], 'weekly');
+  assert.equal(period[0].rank, 1); assert.equal(period[1].rank, null); assert.equal(period[1].percentile, null);
 });
 test('UTC streaks handle gaps, yesterday and inactive accounts', () => {
   const calendar = { '2026-10-20': 2, '2026-10-21': 1, '2026-10-23': 4, '2026-10-24': 1, '2026-10-25': 3 };

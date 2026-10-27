@@ -1,4 +1,4 @@
-import { state, $, $$, esc, icon, num, date, timeAgo, avatar, badge, empty, head, statCard, mount, api, leaderboardTable, heatmap, lineChart, doughnut, bindProfiles, navigate, icons } from './core.js';
+import { state, $, $$, esc, icon, num, date, timeAgo, avatar, badge, empty, head, statCard, mount, api, leaderboardTable, heatmap, lineChart, doughnut, bindProfiles, navigate, icons, options } from './core.js';
 import { challengeDetails } from './community.js';
 export async function analytics() {
   const [data, friends] = await Promise.all([api('/dashboard'), api('/leaderboard?scope=friends')]);
