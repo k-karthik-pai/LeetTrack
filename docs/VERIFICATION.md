@@ -4,13 +4,14 @@ Verified locally on Windows with Node.js 24.19.0 and real MongoDB on 27 October 
 
 ## Automated checks
 
-- `npm test`: **23 passed, 0 failed**. Uses a separate disposable MongoDB database.
+- `npm test`: **26 passed, 0 failed**. Uses a separate disposable MongoDB database.
 - `npm run check`: **41 JavaScript modules** passed syntax checks.
 - `npm audit --omit=dev --audit-level=moderate`: **0 vulnerabilities** after pinning ExcelJS's compatible UUID dependency to its patched release.
 
 Coverage includes:
 
 - Empty installation/no sample records, authentication, password hashing, CSRF and strict input validation.
+- Required LeetCode usernames, no invented academic defaults, Google-style onboarding gates, and RVCE domain validation.
 - Public profile privacy, admin authorization and protection against role injection.
 - Group create/read/update/delete, membership, invitation rotation and owner restrictions.
 - Private message isolation from public/followed activity feeds.
@@ -33,7 +34,8 @@ An initial multi-request implementation intermittently timed out on optional cal
 
 Browser checks use an isolated MongoDB process on a separate host/port; test accounts/groups do not appear in the main installation.
 
-- Registration form, associated field labels, account creation and dashboard transition.
+- Four-field registration form (name, RVCE email, required LeetCode username, password), associated labels, account creation and dashboard transition.
+- Missing LeetCode input triggers native required-field validation; completing it loads live public totals, contest records, calendar and accepted submissions in the isolated browser test.
 - Profile form save, real LeetCode handle linking and display of returned difficulty totals/calendar.
 - LeetCode-style top navigation, solved distribution, heatmap, profile details and empty states.
 - Group creation dialog and successful transition to the member-only group page and leaderboard.

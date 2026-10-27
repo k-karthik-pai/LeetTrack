@@ -2,15 +2,15 @@
 
 Base URL `/api`. JSON responses. Authentication uses the `leettrack.sid` HTTP-only session cookie. Obtain a session and CSRF token with `GET /config`. Every POST/PUT/PATCH/DELETE needs `X-CSRF-Token`; login, registration and password changes return a rotated token. Cookies must accompany requests. Same-origin frontend requests use these automatically.
 
-Error format: `{"error":"Clear message"}`. Common statuses: 400 invalid input, 401 signed out/expired session, 403 permission/CSRF failure, 404 missing/inaccessible item, 409 duplicate/conflict, 429 cooldown/rate limit, 502 upstream failure. Public profile responses omit email and credentials; admin views include student email.
+Error format: `{"error":"Clear message"}`. Common statuses: 400 invalid input, 401 signed out/expired session, 428 required LeetCode linking incomplete, 403 permission/CSRF failure, 404 missing/inaccessible item, 409 duplicate/conflict, 429 cooldown/rate limit, 502 upstream failure. Public profile responses omit email and credentials; admin views include student email.
 
 ## Public and authentication
 
 | Method | Endpoint | Purpose |
 |---|---|---|
 | GET | `/health` | Server/database health |
-| GET | `/config` | CSRF token, public configuration, signup department options |
-| POST | `/auth/register` | Create student; body name, email, password, department, section, semester; optional leetcode/bio/goal |
+| GET | `/config` | CSRF token, public configuration, college name and allowed email domain |
+| POST | `/auth/register` | Create student; required name, email, password, leetcode; optional bio/goal |
 | POST | `/auth/login` | Email/password login; sync linked account when due |
 | POST | `/auth/logout` | Destroy the session |
 | GET | `/auth/google` | Begin configured Google OAuth |
@@ -19,7 +19,7 @@ Error format: `{"error":"Clear message"}`. Common statuses: 400 invalid input, 4
 Example registration body:
 
 ```json
-{"name":"Your Name","email":"you@college.edu","password":"a-long-private-password","department":"CSE","section":"A","semester":5,"leetcode":"your_handle"}
+{"name":"Your Name","email":"student.cs25@rvce.edu.in","password":"a-long-private-password","leetcode":"your_handle"}
 ```
 
 No public endpoint accepts role or college assignments.
@@ -29,7 +29,7 @@ No public endpoint accepts role or college assignments.
 | Method | Endpoint | Purpose |
 |---|---|---|
 | GET | `/users/me` | Current private profile and CSRF token |
-| PUT | `/users/profiles` | Update profile: name, department, section, semester, optional bio/leetcode/goal |
+| PUT | `/users/profiles` | Update profile: required name and leetcode; optional bio/goal |
 | POST | `/users/password` | Current password + new password; revoke other sessions |
 | POST | `/users/refresh-stats` | Synchronize linked public LeetCode data; cooldown enforced |
 | GET | `/users/stats` | Current student's daily snapshots |
@@ -47,7 +47,7 @@ Leaderboard query parameters:
 |---|---|
 | metric | total, easy, medium, hard, rating, weekly, monthly |
 | scope | friends or empty for college |
-| department / section / semester | Exact academic filter |
+| department / section / semester | Legacy compatibility filters; no longer exposed in the UI |
 | group | ObjectId of a group the current user belongs to |
 | q | Name/handle search, max 80 characters used |
 | order | asc or desc |

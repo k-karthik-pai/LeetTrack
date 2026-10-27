@@ -31,8 +31,8 @@ erDiagram
 
 College identity is server-controlled (`campus` for this installation). Administrators and student users cannot choose a different college through a request body. The installation's display name is configured by `COLLEGE_NAME`.
 
-Academic references use department/section codes. Management routes check references before removing a department or section. Student deletion removes snapshots, activity, social links, group membership and challenge participation. A student owning a group must delete it first. Group deletion removes its challenges and messages.
+Academic fields are optional legacy metadata. New accounts receive no default department, section or semester, and these fields are absent from the current student/admin UI. Legacy API references use department/section codes. Management routes check references before removing a department or section. Student deletion removes snapshots, activity, social links, group membership and challenge participation. A student owning a group must delete it first. Group deletion removes its challenges and messages.
 
-Current-day snapshots are updated after synchronization; prior dates are not rewritten. Changing a handle clears that user's history to prevent comparisons between different accounts. Percentiles use registered students, including users pending college verification; roster-only students are excluded.
+Current-day snapshots are updated after synchronization; prior dates are not rewritten. A LeetCode handle is required for password signup and profile completion. Google identities may temporarily have no handle, but protected app APIs return HTTP 428 until linking is complete. Changing a handle clears that user's history to prevent comparisons between different accounts. Percentiles use registered students, including users pending college verification; roster-only students are excluded.
 
 The embedded development MongoDB uses persistent WiredTiger files. MongoDB Atlas or another managed MongoDB can be configured without changing models. No database transactions are assumed; import validation occurs before bulk writes, and standard unique indexes protect identities.

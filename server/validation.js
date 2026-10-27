@@ -4,11 +4,11 @@ export const email = z.string().trim().toLowerCase().email().max(150);
 export const handle = z.string().transform(value => extractLeetCodeUsername(value).toLowerCase()).pipe(z.string().regex(/^[a-zA-Z0-9_-]{1,30}$/, 'Enter a valid LeetCode username or profile URL.'));
 export const profileFields = {
   name: z.string().trim().min(2).max(60),
-  department: z.string().trim().min(1).max(12),
-  section: z.string().trim().min(1).max(12),
-  semester: z.coerce.number().int().min(1).max(12),
+  department: z.string().trim().min(1).max(12).optional(),
+  section: z.string().trim().min(1).max(12).optional(),
+  semester: z.coerce.number().int().min(1).max(12).optional(),
   bio: z.string().trim().max(240).optional(),
-  leetcode: z.union([handle, z.literal('')]).optional(),
+  leetcode: handle,
   goal: z.coerce.number().int().min(1).max(50).optional()
 };
 export const profileSchema = z.object(profileFields).strict();

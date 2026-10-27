@@ -14,11 +14,11 @@ async function client() {
   const agent = request.agent(app); const config = await agent.get('/api/config').expect(200);
   return { agent, csrf: config.body.csrf, async send(method, path, body, status = 200) { const response = await agent[method](`/api${path}`).set('X-CSRF-Token', this.csrf).send(body).expect(status); if (response.body.csrf) this.csrf = response.body.csrf; return response.body; } };
 }
-const signup = (name, address) => ({ name, email: address, password: 'Test-password-2026!', department: 'CSE', section: 'A', semester: 5 });
+const signup = (name, address) => ({ name, email: address, password: 'Test-password-2026!', leetcode: address?.split('@')[0] || 'test_handle' });
 before(async () => {
   db = await connectDatabase({ temporary: true });
   await Promise.all(Object.values(models).map(m => m.init())); await ensureDepartments();
-  app = createApp({ mongoUrl: db.uri, secret: 'isolated-test-session-secret-1234567890', disableRateLimit: true });
+  app = createApp({ mongoUrl: db.uri, secret: 'isolated-test-session-secret-1234567890', disableRateLimit: true, leetCodeFetch: emptyProfileMock });
   alice = await client(); bob = await client(); admin = await client();
   aliceId = (await alice.send('post', '/auth/register', signup('Alice Student', 'alice@test.example'), 201)).user.id;
   bobId = (await bob.send('post', '/auth/register', signup('Bob Student', 'bob@test.example'), 201)).user.id;
@@ -37,6 +37,43 @@ test('CSRF and strict validation prevent unauthorized writes and role injection'
   const outsider = await client(); await outsider.send('post', '/auth/register', { ...signup('Fake', 'x@test.example'), role: 'admin' }, 400);
   await outsider.send('post', '/auth/register', { ...signup('Fake', 'x@test.example'), semester: 0 }, 400);
   await outsider.send('post', '/auth/register', signup('Fake', 'alice@test.example'), 409);
+});
+test('signup requires LeetCode but does not require or invent academic fields', async () => {
+  const newcomer = await client();
+  const data = signup('New Student', 'new@test.example');
+  const { leetcode, ...withoutHandle } = data;
+  await newcomer.send('post', '/auth/register', withoutHandle, 400);
+  await newcomer.send('post', '/auth/register', { ...data, leetcode: '' }, 400);
+  await newcomer.send('post', '/auth/register', { ...data, leetcode: '   ' }, 400);
+  const alice = await User.findById(aliceId);
+  assert.equal(alice.department, undefined); assert.equal(alice.section, undefined); assert.equal(alice.semester, undefined);
+  assert.equal(alice.leetcode, 'alice'); assert.ok(alice.stats.syncedAt);
+});
+test('Google-style incomplete accounts must finish linking before using the app', async () => {
+  await User.updateOne({ _id: aliceId }, { $unset: { leetcode: 1 } });
+  const me = await alice.send('get', '/users/me'); assert.equal(me.user.leetcode, undefined);
+  await alice.send('get', '/dashboard', undefined, 428);
+  await alice.send('get', '/leaderboard', undefined, 428);
+  await alice.send('put', '/users/profiles', { name: 'Alice Student', leetcode: '' }, 400);
+  const saved = await alice.send('put', '/users/profiles', { name: 'Alice Student', leetcode: 'https://leetcode.com/u/Alice/' });
+  assert.equal(saved.user.leetcode, 'alice'); assert.ok(saved.user.stats.syncedAt);
+  await alice.send('get', '/dashboard');
+});
+test('configured RVCE domain accepts college addresses and rejects other domains', async () => {
+  const previous = process.env.COLLEGE_EMAIL_DOMAIN;
+  process.env.COLLEGE_EMAIL_DOMAIN = 'rvce.edu.in';
+  let created;
+  try {
+    const student = await client();
+    await student.send('post', '/auth/register', { ...signup('RVCE Student', 'new@example.com'), leetcode: 'new_handle' }, 400);
+    const response = await student.send('post', '/auth/register', { ...signup('RVCE Student', 'rvce.student.cs25@rvce.edu.in'), leetcode: 'rvce_handle' }, 201);
+    created = response.user.id;
+    assert.equal(response.user.email, 'rvce.student.cs25@rvce.edu.in');
+    assert.equal(response.user.department, undefined);
+  } finally {
+    if (previous === undefined) delete process.env.COLLEGE_EMAIL_DOMAIN; else process.env.COLLEGE_EMAIL_DOMAIN = previous;
+    if (created) { await Snapshot.deleteMany({ user: created }); await User.deleteOne({ _id: created }); }
+  }
 });
 test('passwords are hashed and public responses exclude email and credentials', async () => {
   const user = await User.findById(aliceId).select('+passwordHash'); assert.notEqual(user.passwordHash, signup().password); assert.match(user.passwordHash, /^\$2/);
@@ -85,7 +122,7 @@ test('UTC streaks handle gaps, yesterday and inactive accounts', () => {
   assert.deepEqual(streaks(calendar, '2026-10-26'), { current: 3, longest: 3, activeDays: 5 }); assert.equal(streaks(calendar, '2026-10-27').current, 0); assert.equal(streaks({}, '2026-10-27').longest, 0);
 });
 test('leaderboard filters, progress baselines and search return registered students only', async () => {
-  await User.updateOne({ _id: aliceId }, { leetcode: 'test_alice', stats: { total: 20, easy: 10, medium: 8, hard: 2, syncedAt: new Date() } });
+  await User.updateOne({ _id: aliceId }, { department: 'CSE', section: 'A', leetcode: 'test_alice', stats: { total: 20, easy: 10, medium: 8, hard: 2, syncedAt: new Date() } });
   await User.updateOne({ _id: bobId }, { department: 'ECE', leetcode: 'test_bob', stats: { total: 30, easy: 14, medium: 12, hard: 4, syncedAt: new Date() } });
   await Snapshot.create({ user: aliceId, handle: 'test_alice', date: daysAgo(7), total: 15, rank: 2, percentile: 50 });
   const board = await alice.send('get', '/leaderboard?department=CSE&q=alice'); assert.equal(board.users.length, 1); assert.equal(board.users[0].weekly, 5); assert.equal(board.users[0].rank, 1);
@@ -113,7 +150,7 @@ test('expired challenge progress is frozen before later syncs', async () => {
   await bob.send('post', `/challenges/${challengeId}/join`, {}, 400);
 });
 test('admin import validates every row before saving, and preserves registered students', async () => {
-  const csv = 'name,email,department,section,semester,leetcode\nRoster Student,roster@test.example,CSE,A,5,https://leetcode.com/u/roster_handle/\nAlice Student,alice@test.example,CSE,A,5,\n';
+  const csv = 'name,email,leetcode\nRoster Student,roster@test.example,https://leetcode.com/u/roster_handle/\nAlice Student,alice@test.example,test_alice\n';
   const result = await admin.agent.post('/api/admin/import').set('X-CSRF-Token', admin.csrf).attach('file', Buffer.from(csv), 'roster.csv').expect(200);
   assert.equal(result.body.imported, 1); assert.equal(result.body.skipped, 1); assert.equal(await Roster.countDocuments(), 1);
   const invalid = 'name,email,department,section,semester\nValid,valid@test.example,CSE,A,5\nInvalid,wrong,CSE,A,0\n';
@@ -126,8 +163,8 @@ test('Excel export is readable and contains no credentials', async () => {
 });
 test('Excel imports and file-size validation work with actual workbook bytes', async () => {
   const workbook = new ExcelJS.Workbook(); const sheet = workbook.addWorksheet('Students');
-  sheet.addRow(['name', 'email', 'department', 'section', 'semester', 'leetcode']);
-  sheet.addRow(['Excel Student', 'excel@test.example', 'CSE', 'A', 5, '']);
+  sheet.addRow(['name', 'email', 'leetcode']);
+  sheet.addRow(['Excel Student', 'excel@test.example', 'excel_handle']);
   const bytes = Buffer.from(await workbook.xlsx.writeBuffer());
   const imported = await admin.agent.post('/api/admin/import').set('X-CSRF-Token', admin.csrf).attach('file', bytes, 'students.xlsx').expect(200);
   assert.equal(imported.body.imported, 1);
@@ -163,8 +200,7 @@ test('partial contest-history failures still save difficulty counts and the basi
   assert.equal(result.total, 41); assert.equal(result.rating, 1700); assert.match(result.syncError, /Contest/);
 });
 test('password changes revoke other sessions and logout revokes the current one', async () => {
-  // Remove the test handle to keep this auth test independent of external networks.
-  await User.updateOne({ _id: aliceId }, { $unset: { leetcode: 1 } });
+  // Auth fetches use the injected provider, independently of external networks.
   const other = await client(); await other.send('post', '/auth/login', { email: 'alice@test.example', password: 'Test-password-2026!' });
   await alice.send('post', '/users/password', { currentPassword: 'wrong', password: 'Another-password-2026!' }, 400);
   await alice.send('post', '/users/password', { currentPassword: 'Test-password-2026!', password: 'Another-password-2026!' });
@@ -191,4 +227,14 @@ function providerMock() {
     data.recentAcSubmissionList = [{ title: 'Two Sum', titleSlug: 'two-sum', timestamp: '1792000000', lang: 'python3' }];
     return { ok: true, status: 200, json: async () => ({ data }) };
   };
+}
+async function emptyProfileMock(url, options) {
+  const response = await providerMock()(url, options);
+  const body = await response.json();
+  for (const row of body.data.matchedUser.submitStats.acSubmissionNum) row.count = 0;
+  body.data.matchedUser.userCalendar.submissionCalendar = '{}';
+  body.data.userContestRanking = null;
+  body.data.userContestRankingHistory = [];
+  body.data.recentAcSubmissionList = [];
+  return { ...response, json: async () => body };
 }

@@ -19,8 +19,9 @@ import groupRoutes from './groups.js';
 import adminRoutes from './admin.js';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
-export function createApp({ mongoUrl, secret, disableRateLimit = false } = {}) {
+export function createApp({ mongoUrl, secret, disableRateLimit = false, leetCodeFetch = fetch } = {}) {
   const app = express();
+  app.locals.leetCodeFetch = leetCodeFetch;
   if (process.env.NODE_ENV === 'production') app.set('trust proxy', 1);
   app.use(helmet({ contentSecurityPolicy: { directives: { 'script-src': ["'self'"], 'style-src': ["'self'", "'unsafe-inline'"], 'img-src': ["'self'", 'data:'], 'upgrade-insecure-requests': process.env.NODE_ENV === 'production' ? [] : null } }, strictTransportSecurity: process.env.NODE_ENV === 'production' ? undefined : false }));
   app.use(express.json({ limit: '32kb' }));
@@ -37,7 +38,7 @@ export function createApp({ mongoUrl, secret, disableRateLimit = false } = {}) {
   app.get('/api/health', (req, res) => res.status(User.db.readyState === 1 ? 200 : 503).json({ status: User.db.readyState === 1 ? 'ok' : 'unavailable', database: 'MongoDB' }));
   app.get('/api/config', async (req, res) => {
     req.session.csrf ||= crypto.randomBytes(24).toString('hex');
-    res.json({ csrf: req.session.csrf, googleEnabled: Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET), collegeName: process.env.COLLEGE_NAME || 'LeetTrack Campus', departments: await Department.find({ college: 'campus' }).sort({ code: 1 }).lean(), syncInterval: Number(process.env.SYNC_INTERVAL_MINUTES || 60) });
+    res.json({ csrf: req.session.csrf, googleEnabled: Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET), collegeName: process.env.COLLEGE_NAME || 'RV College of Engineering', collegeEmailDomain: process.env.COLLEGE_EMAIL_DOMAIN || '', syncInterval: Number(process.env.SYNC_INTERVAL_MINUTES || 60) });
   });
   app.use('/api', (req, res, next) => {
     res.set('Cache-Control', 'no-store');
@@ -70,10 +71,9 @@ export function createApp({ mongoUrl, secret, disableRateLimit = false } = {}) {
       let user = await User.findOne({ email: info.email.toLowerCase() }).select('+googleId');
       if (user && user.googleId !== info.sub) fail('This email uses password sign-in. Please sign in with your password.');
       if (!user) {
-        const dept = await Department.findOne({ college: 'campus' });
-        user = await User.create({ email: info.email, name: info.name || info.email.split('@')[0], googleId: info.sub, college: 'campus', department: dept.code, section: dept.sections[0] });
+        user = await User.create({ email: info.email, name: info.name || info.email.split('@')[0], googleId: info.sub, college: 'campus' });
       }
-      if (user.leetcode) { try { user = await (await import('./leetcode.js')).syncUser(user); } catch {} }
+      if (user.leetcode) { try { user = await (await import('./leetcode.js')).syncUser(user, { fetcher: req.app.locals.leetCodeFetch }); } catch {} }
       await signIn(req, user); res.redirect(user.leetcode ? '/#dashboard' : '/#settings');
     } catch (e) { res.redirect(`/?authError=${encodeURIComponent(e.status ? e.message : 'Google sign-in could not be completed. Please try again.')}#login`); }
   });

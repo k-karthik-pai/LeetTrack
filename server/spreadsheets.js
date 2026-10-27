@@ -20,7 +20,7 @@ export async function parseStudents(buffer, filename) {
     leetcode: findKey(['leetcode', 'leetcode url', 'leetcode_url', 'leetcode link', 'leetcode profile', 'username']),
     department: findKey(['department', 'dept', 'branch']), section: findKey(['section', 'sec']), semester: findKey(['semester', 'sem'])
   };
-  for (const key of ['name', 'email', 'department', 'section', 'semester']) if (columns[key] < 1) fail(`Missing required column: ${key}. Download the import template.`);
+  for (const key of ['name', 'email', 'leetcode']) if (columns[key] < 1) fail(`Missing required column: ${key}. Download the import template.`);
   const students = [], errors = [], seenEmails = new Set(), seenUsernames = new Set();
   for (let row = 2; row <= sheet.rowCount; row++) {
     if (!sheet.getRow(row).hasValues) continue;
@@ -28,7 +28,10 @@ export async function parseStudents(buffer, filename) {
     try {
       const address = parse(email, value('email'));
       const username = extractLeetCodeUsername(value('leetcode')).toLowerCase();
-      const student = parse(profileSchema, { name: value('name'), department: value('department').toUpperCase(), section: value('section').toUpperCase(), semester: value('semester'), leetcode: username });
+      const student = parse(profileSchema, { name: value('name'), leetcode: username,
+        ...(value('department') ? { department: value('department').toUpperCase() } : {}),
+        ...(value('section') ? { section: value('section').toUpperCase() } : {}),
+        ...(value('semester') ? { semester: value('semester') } : {}) });
       if (seenEmails.has(address)) fail('Duplicate email in file.');
       if (username && seenUsernames.has(username)) fail('Duplicate LeetCode handle in file.');
       seenEmails.add(address); if (username) seenUsernames.add(username);
@@ -42,7 +45,7 @@ export async function parseStudents(buffer, filename) {
 export async function studentWorkbook(rows, { csv = false } = {}) {
   const workbook = new ExcelJS.Workbook();
   const sheet = workbook.addWorksheet('LeetTrack students');
-  const keys = ['name', 'email', 'department', 'section', 'semester', 'leetcode', 'status', 'total', 'easy', 'medium', 'hard', 'rating'];
+  const keys = ['name', 'email', 'leetcode', 'status', 'total', 'easy', 'medium', 'hard', 'rating'];
   sheet.columns = keys.map(key => ({ header: key, key, width: key === 'email' ? 32 : key === 'name' ? 25 : 18 }));
   for (const row of rows) sheet.addRow(Object.fromEntries(keys.map(k => {
     let value = row[k] ?? '';
@@ -51,6 +54,6 @@ export async function studentWorkbook(rows, { csv = false } = {}) {
   })));
   sheet.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
   sheet.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF235F46' } };
-  sheet.autoFilter = { from: 'A1', to: 'L1' };
+  sheet.autoFilter = { from: 'A1', to: 'I1' };
   return csv ? workbook.csv.writeBuffer() : workbook.xlsx.writeBuffer();
 }

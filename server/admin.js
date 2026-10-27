@@ -20,8 +20,10 @@ router.patch('/students/:id', async (req, res) => {
   const data = parse(z.object({ verified: z.boolean().optional(), department: z.string().min(1).max(12).optional(), section: z.string().min(1).max(12).optional(), semester: z.coerce.number().int().min(1).max(12).optional() }).strict(), req.body);
   const user = await User.findOne({ _id: validId(req.params.id), college: req.user.college });
   if (!user) fail('Student not found.', 404);
-  const dept = await Department.findOne({ college: req.user.college, code: data.department || user.department });
-  if (!dept || !dept.sections.includes(data.section || user.section)) fail('Select a valid department and section.');
+  if (data.department || data.section) {
+    const dept = await Department.findOne({ college: req.user.college, code: data.department || user.department });
+    if (!dept || !dept.sections.includes(data.section || user.section)) fail('Select a valid department and section.');
+  }
   Object.assign(user, data); await user.save(); res.json(publicUser(user, true));
 });
 router.delete('/students/:id', async (req, res) => {
@@ -42,7 +44,7 @@ router.post('/import', upload.single('file'), async (req, res) => {
   try { students = await parseStudents(req.file.buffer, req.file.originalname); }
   catch (e) { if (e.status) throw e; fail('This spreadsheet could not be read. Use the supplied CSV or XLSX template.'); }
   const departments = await Department.find({ college: req.user.college });
-  for (const s of students) if (!departments.some(d => d.code === s.department && d.sections.includes(s.section))) fail(`${s.email}: unknown department or section. No rows were imported.`);
+  for (const s of students) if ((s.department || s.section) && !departments.some(d => d.code === s.department && d.sections.includes(s.section))) fail(`${s.email}: unknown department or section. No rows were imported.`);
   const existing = await User.find({ email: { $in: students.map(s => s.email) } }).select('email');
   const newRows = students.filter(s => !existing.some(u => u.email === s.email));
   if (newRows.length) await Roster.bulkWrite(newRows.map(s => ({ updateOne: { filter: { college: req.user.college, email: s.email }, update: { $set: { ...s, college: req.user.college } }, upsert: true } })));
@@ -56,7 +58,7 @@ router.get('/export', async (req, res) => {
   const rows = users.map(u => ({ ...u, ...u.stats, status: u.verified ? 'verified' : 'pending' })).concat(roster.map(r => ({ ...r, status: 'roster' })));
   res.type(csv ? 'text/csv' : 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet').attachment(`leettrack-students.${csv ? 'csv' : 'xlsx'}`).send(Buffer.from(await studentWorkbook(rows, { csv })));
 });
-router.get('/template', async (req, res) => res.type('text/csv').attachment('leettrack-import-template.csv').send('name,email,department,section,semester,leetcode\nExample Student,student@example.edu,CSE,A,5,\n'));
+router.get('/template', async (req, res) => res.type('text/csv').attachment('leettrack-import-template.csv').send('name,email,leetcode\n'));
 const deptSchema = z.object({ code: z.string().trim().toUpperCase().regex(/^[A-Z0-9_-]{1,12}$/), name: z.string().trim().min(2).max(70), sections: z.array(z.string().trim().toUpperCase().min(1).max(12)).min(1).max(20).transform(a => [...new Set(a)]) }).strict();
 router.post('/departments', async (req, res) => { const data = parse(deptSchema, req.body); res.status(201).json(await Department.create({ ...data, college: req.user.college })); });
 router.put('/departments/:id', async (req, res) => {

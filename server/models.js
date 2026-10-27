@@ -18,7 +18,8 @@ userSchema.add({
   passwordHash: { type: String, select: false }, googleId: { type: String, select: false },
   role: { type: String, enum: ['student', 'admin'], default: 'student' },
   college: { type: String, default: 'campus', index: true },
-  department: { type: String, default: 'CSE' }, section: { type: String, default: 'A' }, semester: { type: Number, default: 1 },
+  // Legacy academic metadata remains readable, but new users receive no invented defaults.
+  department: String, section: String, semester: Number,
   bio: { type: String, default: '' }, leetcode: String,
   verified: { type: Boolean, default: false }, demo: { type: Boolean, default: false },
   following: [ref], stats: { type: statSchema, default: () => ({}) },

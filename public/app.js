@@ -1,7 +1,7 @@
 import { state, $, $$, esc, icon, avatar, field, api, toast, modal, empty, navigate, refresh, destroyCharts, icons, buttonBusy, timeAgo } from './core.js';
 import { dashboard } from './overview.js';
 import { analytics } from './dashboard.js';
-import { leaderboard, groups, groupPage, challenges, community, profile, settings, academicFields, bindDepartment } from './community.js';
+import { leaderboard, groups, groupPage, challenges, community, profile, settings } from './community.js';
 import { admin } from './admin.js';
 const nav = [['dashboard', 'layout-dashboard', 'Dashboard'], ['leaderboard', 'trophy', 'Leaderboard'], ['analytics', 'chart-no-axes-combined', 'Analytics'], ['groups', 'users-round', 'Groups'], ['challenges', 'flag', 'Challenges'], ['community', 'messages-square', 'Community']];
 let renderVersion = 0;
@@ -21,17 +21,15 @@ function shell(route) {
   icons();
 }
 function authPage(signup = false) {
-  state.departments = state.config.departments;
-  $('#app').innerHTML = `<main class="clean-auth"><button class="icon-btn auth-theme" data-theme-toggle aria-label="Toggle theme">${icon('sun-moon')}</button><div class="clean-auth-card ${signup ? 'signup-card' : ''}"><a href="#login" class="brand">${brand}</a><h1>${signup ? 'Create account' : 'Sign in'}</h1><form id="auth-form">${signup ? `<div class="form-grid">${field('Name', '<input name="name" required minlength="2" maxlength="60" autocomplete="name">')}${field('College email', '<input name="email" type="email" required maxlength="150" autocomplete="email">')}${academicFields()}${field('LeetCode username', '<input name="leetcode" maxlength="120" placeholder="Optional">')}${field('Password', '<input name="password" type="password" placeholder="8+ characters" required minlength="8" maxlength="128" autocomplete="new-password">', '', true)}</div>` : `${field('Email', '<input name="email" type="email" required maxlength="150" autocomplete="email">')}${field('Password', '<input name="password" type="password" required maxlength="128" autocomplete="current-password">')}`}<p class="form-error" role="alert" id="auth-error"></p><button type="submit" class="btn primary auth-submit">${signup ? 'Create account' : 'Sign in'} ${icon('arrow-right')}</button></form>${state.config.googleEnabled ? '<div class="auth-divider">or</div><a class="btn auth-google" href="/api/auth/google">Continue with Google</a>' : ''}<div class="auth-switch">${signup ? 'Have an account?' : 'New to LeetTrack?'} <button id="auth-switch">${signup ? 'Sign in' : 'Create account'}</button></div></div></main>`;
+  $('#app').innerHTML = `<main class="clean-auth"><button class="icon-btn auth-theme" data-theme-toggle aria-label="Toggle theme">${icon('sun-moon')}</button><div class="clean-auth-card ${signup ? 'signup-card' : ''}"><a href="#login" class="brand">${brand}</a><h1>${signup ? 'Create account' : 'Sign in'}</h1><form id="auth-form">${signup ? `<div class="form-grid">${field('Name', '<input name="name" required minlength="2" maxlength="60" autocomplete="name">')}${field(state.config.collegeEmailDomain ? 'RVCE email' : 'Email', `<input name="email" type="email" required maxlength="150" autocomplete="email" placeholder="${state.config.collegeEmailDomain ? 'name.cs25@' + esc(state.config.collegeEmailDomain) : ''}">`)}${field('LeetCode username', '<input name="leetcode" required minlength="1" maxlength="120" autocomplete="off">')}${field('Password', '<input name="password" type="password" placeholder="8+ characters" required minlength="8" maxlength="128" autocomplete="new-password">', '', true)}</div>` : `${field('Email', '<input name="email" type="email" required maxlength="150" autocomplete="email">')}${field('Password', '<input name="password" type="password" required maxlength="128" autocomplete="current-password">')}`}<p class="form-error" role="alert" id="auth-error"></p><button type="submit" class="btn primary auth-submit">${signup ? 'Create account' : 'Sign in'} ${icon('arrow-right')}</button></form>${state.config.googleEnabled ? '<div class="auth-divider">or</div><a class="btn auth-google" href="/api/auth/google">Continue with Google</a>' : ''}<div class="auth-switch">${signup ? 'Have an account?' : 'New to LeetTrack?'} <button id="auth-switch">${signup ? 'Sign in' : 'Create account'}</button></div></div></main>`;
   $('#auth-switch').onclick = () => navigate(signup ? 'login' : 'signup');
-  if (signup) bindDepartment($('#auth-form'));
   $('#auth-form').onsubmit = async e => {
     e.preventDefault(); const form = e.currentTarget, button = $('button[type=submit]', form); if (button.disabled) return; button.disabled = true; $('#auth-error').textContent = '';
     try {
       const data = await api(`/auth/${signup ? 'register' : 'login'}`, { method: 'POST', body: Object.fromEntries(new FormData(form)) });
-      state.me = data.user; state.departments = await api('/departments');
+      state.me = data.user;
       if (data.user.stats.syncError) toast(data.user.stats.syncError, true);
-      navigate('dashboard');
+      navigate(data.user.leetcode ? 'dashboard' : 'settings');
     } catch (error) { $('#auth-error').textContent = error.message; } finally { button.disabled = false; }
   };
   const error = new URLSearchParams(location.search).get('authError'); if (error) { $('#auth-error').textContent = error; history.replaceState(null, '', location.pathname + location.hash); }
@@ -43,6 +41,7 @@ async function render() {
   state.route = route || 'dashboard'; destroyCharts(); if ($('#modal').open) $('#modal').close();
   if (!state.me) { authPage(state.route === 'signup'); return; }
   if (['login', 'signup', ''].includes(state.route)) { navigate('dashboard'); return; }
+  if (!state.me.leetcode && state.route !== 'settings') { navigate('settings'); return; }
   shell(state.route);
   try {
     const pages = { dashboard, leaderboard, groups: () => id ? groupPage(id) : groups(), challenges, community, analytics, profile: () => profile(id), settings, admin };
@@ -51,6 +50,7 @@ async function render() {
   } catch (e) {
     if (version !== renderVersion) return;
     if (e.status === 401) { state.me = null; navigate('login'); authPage(); }
+    else if (e.status === 428) { state.me = (await api('/users/me')).user; navigate('settings'); }
     else $('#page-content').innerHTML = empty('Could not load page', e.message, 'cloud-alert', '<button class="btn" id="retry-page">Retry</button>');
     if ($('#retry-page')) $('#retry-page').onclick = refresh;
   }
@@ -61,6 +61,6 @@ document.addEventListener('keydown', e => { if ((e.ctrlKey || e.metaKey) && e.ke
 window.addEventListener('hashchange', render);
 try {
   state.config = await api('/config');
-  try { const data = await api('/users/me'); state.me = data.user; state.departments = await api('/departments'); } catch (e) { if (e.status !== 401) throw e; }
+  try { const data = await api('/users/me'); state.me = data.user; } catch (e) { if (e.status !== 401) throw e; }
   await render();
 } catch (error) { $('#app').innerHTML = `<div class="boot">${icon('cloud-alert')}<h2>Connection error</h2><p>${esc(error.message)}</p><button class="btn primary" id="reload-app">Retry</button></div>`; $('#reload-app').onclick = () => location.reload(); icons(); }
