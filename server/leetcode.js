@@ -26,6 +26,28 @@ export async function fetchLeetCode(username, fetcher = fetch) {
     syncedAt: new Date(), syncError: warnings.join(' ')
   };
 }
+// Small public GraphQL queries used by contests; neither needs a LeetCode login.
+async function graphql(query, variables, fetcher) {
+  const controller = new AbortController(), timer = setTimeout(() => controller.abort(), 15000);
+  try {
+    const response = await fetcher(endpoint, { method: 'POST', signal: controller.signal, body: JSON.stringify({ query, variables }), headers: { 'Content-Type': 'application/json', Accept: 'application/json', Origin: 'https://leetcode.com', Referer: 'https://leetcode.com/', 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36' } });
+    if (!response.ok) throw new Error(response.status === 429 ? 'LeetCode rate limit reached. Try again shortly.' : `LeetCode responded with HTTP ${response.status}.`);
+    const body = await response.json();
+    if (!body.data) throw new Error('LeetCode returned an unexpected response.');
+    return body.data;
+  } catch (error) { throw error.name === 'AbortError' ? new Error('LeetCode took too long to respond.') : error; }
+  finally { clearTimeout(timer); }
+}
+// The 20 most recent submissions of any status, newest first.
+export async function fetchSubmissions(username, fetcher = fetch) {
+  const data = await graphql('query recent($username: String!) { recentSubmissionList(username: $username, limit: 20) { titleSlug timestamp statusDisplay lang } }', { username }, fetcher);
+  return (data.recentSubmissionList || []).map(s => ({ slug: s.titleSlug, ts: Number(s.timestamp), status: s.statusDisplay, lang: s.lang }));
+}
+export async function fetchProblem(slug, fetcher = fetch) {
+  const data = await graphql('query problem($slug: String!) { question(titleSlug: $slug) { questionFrontendId title titleSlug difficulty isPaidOnly } }', { slug }, fetcher);
+  const q = data.question;
+  return q && { slug: q.titleSlug, title: `${q.questionFrontendId}. ${q.title}`, difficulty: q.difficulty, premium: !!q.isPaidOnly };
+}
 const running = new Set();
 export async function syncUser(user, { fetcher = fetch, force = false } = {}) {
   const id = String(user._id);

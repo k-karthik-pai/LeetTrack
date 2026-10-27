@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import multer from 'multer';
 import { z } from 'zod';
-import { User, Roster, Department, Group, Snapshot, Activity, Challenge } from './models.js';
+import { User, Roster, Department, Group, Snapshot, Activity, Challenge, Contest } from './models.js';
 import { publicUser, rankedCollege } from './metrics.js';
 import { parse, fail, validId } from './validation.js';
 import { parseStudents, studentWorkbook } from './spreadsheets.js';
@@ -35,6 +35,7 @@ router.delete('/students/:id', async (req, res) => {
   await Group.updateMany({ college: user.college }, { $pull: { members: user._id } });
   await User.updateMany({ college: user.college }, { $pull: { following: user._id, followers: user._id } });
   await Challenge.updateMany({ college: user.college }, { $pull: { participants: { user: user._id } } });
+  await Contest.updateMany({ college: user.college }, { $pull: { participants: { user: user._id } } }); await Contest.deleteMany({ organiser: user._id });
   await Snapshot.deleteMany({ user: user._id }); await Activity.deleteMany({ user: user._id }); await user.deleteOne();
   res.json({ message: 'Student deleted.' });
 });

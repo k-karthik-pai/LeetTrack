@@ -3,7 +3,8 @@ import { dashboard } from './overview.js';
 import { analytics } from './dashboard.js';
 import { leaderboard, groups, groupPage, challenges, community, profile, settings } from './community.js';
 import { admin } from './admin.js';
-const nav = [['dashboard', 'layout-dashboard', 'Dashboard'], ['leaderboard', 'trophy', 'Leaderboard'], ['analytics', 'chart-no-axes-combined', 'Analytics'], ['groups', 'users-round', 'Groups'], ['challenges', 'flag', 'Challenges'], ['community', 'messages-square', 'Community']];
+import { contests, contestPage } from './contests.js';
+const nav = [['dashboard', 'layout-dashboard', 'Dashboard'], ['leaderboard', 'trophy', 'Leaderboard'], ['analytics', 'chart-no-axes-combined', 'Analytics'], ['groups', 'users-round', 'Groups'], ['contests', 'trophy', 'Contests'], ['challenges', 'flag', 'Challenges'], ['community', 'messages-square', 'Community']];
 let renderVersion = 0;
 try { document.documentElement.dataset.theme = localStorage.getItem('leettrack.theme') || 'dark'; } catch {}
 const brand = '<span class="brand-mark">&lt;/&gt;</span><span>LeetTrack<span class="brand-dot">.</span></span>';
@@ -44,7 +45,7 @@ async function render() {
   if (!state.me.leetcode && state.route !== 'settings') { navigate('settings'); return; }
   shell(state.route);
   try {
-    const pages = { dashboard, leaderboard, groups: () => id ? groupPage(id) : groups(), challenges, community, analytics, profile: () => profile(id), settings, admin };
+    const pages = { dashboard, leaderboard, groups: () => id ? groupPage(id) : groups(), contests: () => id ? contestPage(id) : contests(), challenges, community, analytics, profile: () => profile(id), settings, admin };
     if (pages[state.route]) await pages[state.route]();
     else $('#page-content').innerHTML = empty('Page not found', '', 'compass', '<a href="#dashboard" class="btn primary">Dashboard</a>');
   } catch (e) {

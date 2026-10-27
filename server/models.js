@@ -48,6 +48,19 @@ export const Challenge = model('Challenge', new Schema({
   startsAt: Date, endsAt: Date,
   participants: [{ _id: false, user: ref, baseline: Number, joinedAt: Date, finalValue: Number }]
 }, { timestamps: true }));
+const contestEntrySchema = new Schema({
+  user: ref, joinedAt: Date, checkedAt: Date, checkError: String,
+  // Every in-window submission seen on LeetCode, accumulated across checks because only the latest 20 are public.
+  seen: [{ _id: false, slug: String, ts: Number, status: String, lang: String }],
+  solutions: [{ _id: false, slug: String, lang: String, code: String, savedAt: Date }]
+}, { _id: false });
+export const Contest = model('Contest', new Schema({
+  title: String, description: String, college: { type: String, index: true }, organiser: ref,
+  group: { type: Schema.Types.ObjectId, ref: 'Group', default: null }, inviteCode: { type: String, unique: true },
+  startsAt: Date, endsAt: { type: Date, index: true }, penalty: { type: Number, default: 5 },
+  problems: [{ _id: false, slug: String, title: String, difficulty: String, premium: Boolean, points: Number }],
+  participants: [contestEntrySchema], checkedAt: Date, finalized: { type: Boolean, default: false }
+}, { timestamps: true }));
 export const Activity = model('Activity', new Schema({
   college: { type: String, index: true }, user: ref, group: { type: Schema.Types.ObjectId, ref: 'Group', default: null },
   type: String, text: String

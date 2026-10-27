@@ -17,6 +17,7 @@ import { publicUser, rankedCollege, dailyActivity } from './metrics.js';
 import { parse, fail, visibilitySchema } from './validation.js';
 import { visibleTo } from './visibility.js';
 import groupRoutes from './groups.js';
+import contestRoutes from './contests.js';
 import adminRoutes from './admin.js';
 
 const root = fileURLToPath(new URL('../', import.meta.url));
@@ -105,6 +106,7 @@ export function createApp({ mongoUrl, secret, disableRateLimit = false, leetCode
     res.json({ user: publicUser(req.user, true), message: 'Profile visibility saved.' });
   });
   app.use('/api', auth, groupRoutes);
+  app.use('/api', auth, contestRoutes);
   app.use('/api/admin', auth, admin, adminRoutes);
   app.use('/api', (req, res) => res.status(404).json({ error: 'API endpoint not found.' }));
   app.get('/vendor/chart.js', (req, res) => res.sendFile(path.join(root, 'node_modules/chart.js/dist/chart.umd.js')));

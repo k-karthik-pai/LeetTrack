@@ -235,6 +235,50 @@ test('owner can delete a group and its private challenges and messages', async (
   await alice.send('delete', `/groups/${groupId}`); assert.equal(await Challenge.countDocuments({ group: groupId }), 0); assert.equal(await Activity.countDocuments({ group: groupId }), 0);
   await bob.send('get', `/groups/${groupId}`, undefined, 404);
 });
+test('contests grade LeetCode submissions inside the window and keep problems hidden until the start', async () => {
+  const { Contest } = models;
+  const soon = new Date(Date.now() + 3600000).toISOString();
+  const body = { title: 'Friday Contest', description: 'Two problems', startsAt: soon, duration: 60, penalty: 5, problems: [{ slug: 'https://leetcode.com/problems/two-sum/description/', points: 3 }, { slug: 'add-binary', points: 5 }] };
+  await alice.send('post', '/contests', { ...body, problems: [{ slug: 'no-such-problem', points: 3 }] }, 400);
+  await alice.send('post', '/contests', { ...body, problems: [{ slug: 'two-sum', points: 3 }, { slug: 'two-sum', points: 3 }] }, 400);
+  const created = await alice.send('post', '/contests', body, 201);
+  assert.deepEqual(created.problems.map(p => [p.slug, p.title, p.points]), [['two-sum', '1. Two Sum', 3], ['add-binary', '67. Add Binary', 5]]);
+  await bob.send('get', `/contests/${created.id}`, undefined, 404);
+  await bob.send('post', '/contests/join', { code: created.inviteCode });
+  const upcoming = await bob.send('get', `/contests/${created.id}`);
+  assert.equal(upcoming.status, 'upcoming'); assert.equal(upcoming.problems.length, 0); assert.equal(upcoming.inviteCode, undefined);
+  // Start the contest an hour ago and submit on LeetCode.
+  const start = Math.floor(Date.now() / 1000) - 3600;
+  await Contest.updateOne({ _id: created.id }, { startsAt: new Date(start * 1000), endsAt: new Date((start + 7200) * 1000) });
+  const bobHandle = (await User.findById(bobId)).leetcode;
+  leetCodeSubmissions[bobHandle] = [
+    { titleSlug: 'add-binary', timestamp: String(start + 420), statusDisplay: 'Accepted', lang: 'cpp' },
+    { titleSlug: 'two-sum', timestamp: String(start + 300), statusDisplay: 'Accepted', lang: 'python3' },
+    { titleSlug: 'two-sum', timestamp: String(start + 120), statusDisplay: 'Compile Error', lang: 'python3' },
+    { titleSlug: 'two-sum', timestamp: String(start + 60), statusDisplay: 'Wrong Answer', lang: 'python3' },
+    { titleSlug: 'two-sum', timestamp: String(start - 60), statusDisplay: 'Accepted', lang: 'python3' },
+    { titleSlug: 'palindrome-number', timestamp: String(start + 30), statusDisplay: 'Accepted', lang: 'python3' }
+  ];
+  let running = await bob.send('get', `/contests/${created.id}`);
+  assert.equal(running.status, 'running'); assert.equal(running.problems.length, 2);
+  const row = running.standings[0];
+  assert.deepEqual([row.score, row.finish, row.rank, row.problems[0].wrong, row.problems[0].minutes, row.problems[1].lang], [8, 12, 1, 1, 5, 'cpp']);
+  assert.equal(running.analysis[0].solved, 1); assert.equal(running.analysis[0].firstSolve.name, 'Bob Student');
+  // Older submissions drop out of LeetCode's recent list, but already-seen ones are kept.
+  leetCodeSubmissions[bobHandle] = [];
+  await Contest.updateOne({ _id: created.id }, { checkedAt: new Date(0) });
+  running = await bob.send('get', `/contests/${created.id}`); assert.equal(running.standings[0].score, 8);
+  await bob.send('post', `/contests/${created.id}/refresh`, {}, 403);
+  await bob.send('put', `/contests/${created.id}/solutions`, { slug: 'two-sum', lang: 'python3', code: 'print(1)' }, 400);
+  // End the contest beyond the grace period: results are finalized and the winner is announced.
+  await Contest.updateOne({ _id: created.id }, { endsAt: new Date((start + 900) * 1000), checkedAt: new Date(0) });
+  const ended = await alice.send('get', `/contests/${created.id}`);
+  assert.equal(ended.finalized, true); assert.ok(await Activity.exists({ user: bobId, type: 'contest' }));
+  await bob.send('put', `/contests/${created.id}/solutions`, { slug: 'two-sum', lang: 'python3', code: 'class Solution: pass' });
+  const shared = await alice.send('get', `/contests/${created.id}/solutions/${bobId}`); assert.equal(shared[0].code, 'class Solution: pass');
+  await bob.send('delete', `/contests/${created.id}`, undefined, 403);
+  await alice.send('delete', `/contests/${created.id}`);
+});
 test('admin can remove a student and their relational records', async () => {
   await admin.send('delete', `/admin/students/${bobId}`); assert.equal(await User.exists({ _id: bobId }), null); assert.equal(await Snapshot.countDocuments({ user: bobId }), 0);
   await admin.send('delete', `/admin/students/${adminId}`, undefined, 400);
@@ -250,7 +294,12 @@ function providerMock() {
     return { ok: true, status: 200, json: async () => ({ data }) };
   };
 }
+const leetCodeSubmissions = {};
+const leetCodeProblems = { 'two-sum': { questionFrontendId: '1', title: 'Two Sum', titleSlug: 'two-sum', difficulty: 'Easy', isPaidOnly: false }, 'add-binary': { questionFrontendId: '67', title: 'Add Binary', titleSlug: 'add-binary', difficulty: 'Easy', isPaidOnly: false } };
 async function emptyProfileMock(url, options) {
+  const { query, variables } = JSON.parse(options.body);
+  if (query.includes('recentSubmissionList')) return { ok: true, status: 200, json: async () => ({ data: { recentSubmissionList: leetCodeSubmissions[variables.username] || [] } }) };
+  if (query.includes('question(')) return { ok: true, status: 200, json: async () => ({ data: { question: leetCodeProblems[variables.slug] || null } }) };
   const response = await providerMock()(url, options);
   const body = await response.json();
   for (const row of body.data.matchedUser.submitStats.acSubmissionNum) row.count = 0;

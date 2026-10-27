@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import crypto from 'node:crypto';
 import { z } from 'zod';
-import { User, Group, Challenge, Activity } from './models.js';
+import { User, Group, Challenge, Activity, Contest } from './models.js';
 import { publicUser, rankUsers } from './metrics.js';
 import { parse, fail, validId, groupSchema, challengeSchema } from './validation.js';
 import { visibleTo } from './visibility.js';
@@ -40,7 +40,7 @@ router.put('/groups/:id', async (req, res) => {
 });
 router.delete('/groups/:id', async (req, res) => {
   const group = await memberGroup(req); owner(req, group);
-  await Challenge.deleteMany({ group: group._id }); await Activity.deleteMany({ group: group._id }); await group.deleteOne(); res.json({ message: 'Group deleted.' });
+  await Challenge.deleteMany({ group: group._id }); await Activity.deleteMany({ group: group._id }); await Contest.updateMany({ group: group._id }, { group: null }); await group.deleteOne(); res.json({ message: 'Group deleted.' });
 });
 router.post('/groups/:id/leave', async (req, res) => {
   const group = await memberGroup(req);
