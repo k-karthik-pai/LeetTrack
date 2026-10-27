@@ -1,0 +1,2 @@
+/* Local system fonts keep the application usable offline and avoid third-party requests. */
+@font-face{font-family:Manrope;src:local('Manrope');font-display:swap}
