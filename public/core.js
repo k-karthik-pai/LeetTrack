@@ -78,7 +78,7 @@ export function heatmap(calendar = {}) {
     cells.push(`<span class="heat-cell l${level}" role="img" aria-label="${key}: ${count} submissions" title="${date(key)} · ${count} submissions" ${key > today ? 'style="opacity:0"' : ''}></span>`);
     if (i % 7 === 0 && dt.getUTCMonth() !== previousMonth) { monthLabels.push(dt.toLocaleDateString('en', { month: 'short', timeZone: 'UTC' })); previousMonth = dt.getUTCMonth(); }
   }
-  return `<div class="heatmap-scroll"><div class="heat-months">${monthLabels.map(m => `<span>${m}</span>`).join('')}</div><div class="heatmap">${cells.join('')}</div></div><div class="heat-footer"><span>Submission activity · UTC</span><span class="heat-key">Less ${[0, 1, 2, 3, 4].map(n => `<span class="heat-cell l${n}"></span>`).join('')} More</span></div>`;
+  return `<div class="heatmap-scroll"><div class="heat-months">${monthLabels.map(m => `<span>${m}</span>`).join('')}</div><div class="heatmap">${cells.join('')}</div></div><div class="heat-footer"><span></span><span class="heat-key">Less ${[0, 1, 2, 3, 4].map(n => `<span class="heat-cell l${n}"></span>`).join('')} More</span></div>`;
 }
 export function lineChart(id, labels, datasets, { reverse = false, integer = true } = {}) {
   const canvas = document.getElementById(id); if (!canvas || !window.Chart) return;
