@@ -24,6 +24,8 @@ userSchema.add({
   verified: { type: Boolean, default: false }, demo: { type: Boolean, default: false },
   following: [ref], stats: { type: statSchema, default: () => ({}) },
   goal: { type: Number, default: 5 },
+  visibility: { type: String, enum: ['college', 'groups', 'private'], default: 'college' },
+  visibleGroups: [{ type: Schema.Types.ObjectId, ref: 'Group' }],
   authVersion: { type: Number, default: 0 }
 });
 userSchema.index({ college: 1, leetcode: 1 }, { unique: true, partialFilterExpression: { leetcode: { $type: 'string' } } });

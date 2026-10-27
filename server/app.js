@@ -14,7 +14,8 @@ import { authMiddleware as auth, adminMiddleware as admin } from '../backend/mid
 import { signIn, checkDomain } from '../backend/controllers/authController.js';
 import { User, Snapshot, Group, Challenge, Activity, Department } from './models.js';
 import { publicUser, rankedCollege, dailyActivity } from './metrics.js';
-import { parse, fail } from './validation.js';
+import { parse, fail, visibilitySchema } from './validation.js';
+import { visibleTo } from './visibility.js';
 import groupRoutes from './groups.js';
 import adminRoutes from './admin.js';
 
@@ -83,8 +84,9 @@ export function createApp({ mongoUrl, secret, disableRateLimit = false, leetCode
     const users = await rankedCollege(req.user.college);
     const me = users.find(u => u.id === req.userId);
     const groups = await Group.find({ college: req.user.college, members: req.user._id }).lean();
+    const canSee = await visibleTo(req.user);
     const department = users.filter(u => u.department === me.department).sort((a, b) => b.stats.total - a.stats.total);
-    res.json({ me: { ...me, email: req.user.email, following: req.user.following.map(String) }, students: users.length, totalSolved: users.reduce((sum, u) => sum + u.stats.total, 0), departmentRank: department.filter(u => u.stats.total > me.stats.total).length + 1, leaders: users.slice(0, 5).map(({ snapshots, ...u }) => u), groups: groups.map(g => ({ ...g, id: String(g._id), owner: String(g.owner) })), activity: dailyActivity(req.user.stats.calendar, 90) });
+    res.json({ me: { ...me, email: req.user.email, following: req.user.following.map(String) }, students: users.length, totalSolved: users.reduce((sum, u) => sum + u.stats.total, 0), departmentRank: department.filter(u => u.stats.total > me.stats.total).length + 1, leaders: users.filter(canSee).slice(0, 5).map(({ snapshots, ...u }) => u), groups: groups.map(g => ({ ...g, id: String(g._id), owner: String(g.owner) })), activity: dailyActivity(req.user.stats.calendar, 90) });
   });
   app.post('/api/users/password', auth, async (req, res) => {
     if (req.user.demo) fail('Password changes are disabled for the shared demo account.');
@@ -94,6 +96,13 @@ export function createApp({ mongoUrl, secret, disableRateLimit = false, leetCode
     if (!await bcrypt.compare(data.currentPassword, user.passwordHash || user.password)) fail('Your current password is incorrect.');
     user.passwordHash = await bcrypt.hash(data.password, 12); user.password = undefined; user.authVersion += 1; await user.save();
     await signIn(req, user); res.json({ message: 'Password changed.', csrf: req.session.csrf });
+  });
+  app.put('/api/users/visibility', auth, async (req, res) => {
+    const data = parse(visibilitySchema, req.body);
+    const groups = data.visibility === 'groups' ? await Group.find({ _id: { $in: data.visibleGroups }, college: req.user.college, members: req.user._id }).select('_id') : [];
+    if (data.visibility === 'groups' && !groups.length) fail('Choose at least one of your groups.');
+    req.user.visibility = data.visibility; req.user.visibleGroups = groups.map(g => g._id); await req.user.save();
+    res.json({ user: publicUser(req.user, true), message: 'Profile visibility saved.' });
   });
   app.use('/api', auth, groupRoutes);
   app.use('/api/admin', auth, admin, adminRoutes);

@@ -14,6 +14,7 @@ export const profileFields = {
 export const profileSchema = z.object(profileFields).strict();
 export const registerSchema = z.object({ ...profileFields, email, password: z.string().min(8).max(128) }).strict();
 export const loginSchema = z.object({ email, password: z.string().min(1).max(128) }).strict();
+export const visibilitySchema = z.object({ visibility: z.enum(['college', 'groups', 'private']), visibleGroups: z.array(z.string().regex(/^[a-f\d]{24}$/i)).max(30).default([]) }).strict();
 export const groupSchema = z.object({ name: z.string().trim().min(2).max(60), description: z.string().trim().max(240).default(''), color: z.enum(['mint', 'lavender', 'peach']).default('mint') }).strict();
 export const challengeSchema = z.object({
   title: z.string().trim().min(3).max(80), description: z.string().trim().max(300).default(''),

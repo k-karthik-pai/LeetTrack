@@ -4,6 +4,7 @@ import { z } from 'zod';
 import { User, Group, Challenge, Activity } from './models.js';
 import { publicUser, rankUsers } from './metrics.js';
 import { parse, fail, validId, groupSchema, challengeSchema } from './validation.js';
+import { visibleTo } from './visibility.js';
 const router = Router();
 const has = (ids, id) => ids.some(x => String(x) === String(id));
 export async function memberGroup(req, id = req.params.id) {
@@ -32,7 +33,7 @@ router.get('/groups/:id', async (req, res) => {
   const group = await memberGroup(req);
   const users = await User.find({ _id: { $in: group.members }, college: req.user.college });
   const activity = await Activity.find({ college: req.user.college, group: group._id }).sort({ createdAt: -1 }).limit(40).populate('user', 'name');
-  res.json({ ...groupJSON(group), leaderboard: rankUsers(users.map(u => publicUser(u))), activity: activity.map(a => ({ id: String(a._id), userName: a.user?.name || 'Former member', text: a.text, type: a.type, createdAt: a.createdAt })) });
+  res.json({ ...groupJSON(group), leaderboard: rankUsers(users.filter(await visibleTo(req.user)).map(u => publicUser(u))), activity: activity.map(a => ({ id: String(a._id), userName: a.user?.name || 'Former member', text: a.text, type: a.type, createdAt: a.createdAt })) });
 });
 router.put('/groups/:id', async (req, res) => {
   const group = await memberGroup(req); owner(req, group); Object.assign(group, parse(groupSchema, req.body)); await group.save(); res.json(groupJSON(group));
@@ -63,7 +64,8 @@ async function visibleChallenge(req, id = req.params.id) {
   if (challenge.group) await memberGroup(req, String(challenge.group));
   return challenge;
 }
-async function challengeJSON(challenge) {
+async function challengeJSON(challenge, req) {
+  const canSee = await visibleTo(req.user);
   const users = await User.find({ _id: { $in: challenge.participants.map(p => p.user) } });
   const closed = challenge.endsAt <= new Date();
   let dirty = false;
@@ -76,7 +78,7 @@ async function challengeJSON(challenge) {
       progress = p.finalValue;
     }
     return { id: String(user._id), name: user.name, progress, completed: progress >= challenge.target };
-  }).filter(Boolean).sort((a, b) => b.progress - a.progress);
+  }).filter(p => p && canSee(p)).sort((a, b) => b.progress - a.progress);
   if (dirty) await challenge.save();
   return { ...challenge.toObject(), id: String(challenge._id), creator: String(challenge.creator), group: challenge.group ? String(challenge.group) : null, participants, closed };
 }
@@ -85,14 +87,14 @@ router.get('/challenges', async (req, res) => {
   const filter = { college: req.user.college, $or: [{ group: null }, { group: { $in: groups.map(g => g._id) } }] };
   if (req.query.group) { await memberGroup(req, req.query.group); filter.group = req.query.group; }
   const challenges = await Challenge.find(filter).sort({ endsAt: 1 });
-  res.json(await Promise.all(challenges.map(challengeJSON)));
+  res.json(await Promise.all(challenges.map(c => challengeJSON(c, req))));
 });
 router.post('/challenges', async (req, res) => {
   const data = parse(challengeSchema, req.body);
   if (data.group) { const group = await memberGroup(req, data.group); owner(req, group); }
   else if (req.user.role !== 'admin') fail('College-wide challenges can be created by an administrator. Choose one of your groups.', 403);
   const challenge = await Challenge.create({ ...data, group: data.group || null, college: req.user.college, creator: req.user._id, startsAt: new Date(), endsAt: new Date(Date.now() + data.days * 86400000), participants: [] });
-  res.status(201).json(await challengeJSON(challenge));
+  res.status(201).json(await challengeJSON(challenge, req));
 });
 router.post('/challenges/:id/join', async (req, res) => {
   const challenge = await visibleChallenge(req);
@@ -101,13 +103,13 @@ router.post('/challenges/:id/join', async (req, res) => {
   if (!has(challenge.participants.map(p => p.user), req.userId)) {
     await Challenge.updateOne({ _id: challenge._id, 'participants.user': { $ne: req.user._id } }, { $push: { participants: { user: req.user._id, baseline: req.user.stats[challenge.metric], joinedAt: new Date() } } });
   }
-  res.json(await challengeJSON(await Challenge.findById(challenge._id)));
+  res.json(await challengeJSON(await Challenge.findById(challenge._id), req));
 });
 router.patch('/challenges/:id', async (req, res) => {
   const challenge = await visibleChallenge(req);
   if (String(challenge.creator) !== req.userId && !(req.user.role === 'admin' && !challenge.group)) fail('Only the challenge creator can edit it.', 403);
   const data = parse(z.object({ title: z.string().trim().min(3).max(80), description: z.string().trim().max(300), target: z.coerce.number().int().min(1).max(500) }).strict(), req.body);
-  Object.assign(challenge, data); await challenge.save(); res.json(await challengeJSON(challenge));
+  Object.assign(challenge, data); await challenge.save(); res.json(await challengeJSON(challenge, req));
 });
 router.delete('/challenges/:id', async (req, res) => {
   const challenge = await visibleChallenge(req);

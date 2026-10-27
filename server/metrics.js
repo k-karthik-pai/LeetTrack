@@ -25,7 +25,7 @@ export function publicUser(user, self = false) {
   return {
     id: String(_id), name, role, college, department, section, semester, bio, leetcode, verified, demo,
     stats, goal, createdAt, streak: streaks(stats.calendar),
-    ...(self ? { email: raw.email, following: (raw.following || []).map(String) } : {})
+    ...(self ? { email: raw.email, following: (raw.following || []).map(String), visibility: raw.visibility || 'college', visibleGroups: (raw.visibleGroups || []).map(String) } : {})
   };
 }
 // Competition ranks share ties. Percentile is the percentage of registered peers

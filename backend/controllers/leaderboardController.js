@@ -2,10 +2,11 @@
 import { Group } from '../../server/models.js';
 import { rankedCollege, rankUsers } from '../../server/metrics.js';
 import { fail, validId } from '../../server/validation.js';
+import { visibleTo } from '../../server/visibility.js';
 export const getLeaderboard = async (req, res) => {
   const metric = String(req.query.metric || 'total');
   if (!['total', 'easy', 'medium', 'hard', 'rating', 'weekly', 'monthly'].includes(metric)) fail('Unknown ranking metric.');
-  let users = await rankedCollege(req.user.college, metric);
+  let users = (await rankedCollege(req.user.college, metric)).filter(await visibleTo(req.user));
   if (req.query.group) {
     const group = await Group.findOne({ _id: validId(req.query.group), college: req.user.college, members: req.user._id });
     if (!group) fail('Group not found or you are not a member.', 404);

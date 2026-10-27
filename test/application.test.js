@@ -110,6 +110,28 @@ test('invitation rotation and leaving revoke access', async () => {
   await bob.send('post', '/groups/join', { code: rotated.code });
   await alice.send('post', `/groups/${groupId}/leave`, {}, 400);
 });
+test('profile visibility hides students from the college but not from selected groups', async () => {
+  const carol = await client();
+  const carolId = (await carol.send('post', '/auth/register', signup('Carol Student', 'carol@test.example'), 201)).user.id;
+  const ids = board => board.users.map(u => u.id);
+  await alice.send('put', '/users/visibility', { visibility: 'groups', visibleGroups: [] }, 400);
+  await alice.send('put', '/users/visibility', { visibility: 'groups', visibleGroups: ['0123456789abcdef01234567'] }, 400);
+  const saved = await alice.send('put', '/users/visibility', { visibility: 'groups', visibleGroups: [groupId] });
+  assert.equal(saved.user.visibility, 'groups'); assert.deepEqual(saved.user.visibleGroups, [groupId]);
+  assert.ok(ids(await bob.send('get', '/leaderboard')).includes(aliceId));
+  await bob.send('get', `/users/${aliceId}/profile`);
+  assert.ok(!ids(await carol.send('get', '/leaderboard')).includes(aliceId));
+  await carol.send('get', `/users/${aliceId}/profile`, undefined, 404);
+  await carol.send('post', `/users/${aliceId}/follow`, {}, 404);
+  assert.ok(ids(await admin.send('get', '/leaderboard')).includes(aliceId));
+  assert.ok(ids(await alice.send('get', '/leaderboard')).includes(aliceId));
+  await alice.send('put', '/users/visibility', { visibility: 'private', visibleGroups: [] });
+  assert.ok(!ids(await bob.send('get', '/leaderboard')).includes(aliceId));
+  assert.ok(!(await bob.send('get', `/groups/${groupId}`)).leaderboard.some(u => u.id === aliceId));
+  await alice.send('put', '/users/visibility', { visibility: 'college', visibleGroups: [] });
+  assert.ok(ids(await carol.send('get', '/leaderboard')).includes(aliceId));
+  await User.deleteOne({ _id: carolId });
+});
 test('competition ranks and percentiles share ties correctly', () => {
   const users = [{ id: 'a', name: 'A', stats: { total: 10, hard: 1 } }, { id: 'b', name: 'B', stats: { total: 10, hard: 2 } }, { id: 'c', name: 'C', stats: { total: 2 } }];
   const ranked = rankUsers(users); assert.deepEqual(ranked.map(u => u.rank), [1, 1, 3]); assert.deepEqual(ranked.map(u => u.percentile), [50, 50, 0]); assert.equal(ranked[0].id, 'b');
