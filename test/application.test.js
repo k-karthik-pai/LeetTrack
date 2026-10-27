@@ -7,7 +7,7 @@ import { createApp } from '../server/app.js';
 import { ensureDepartments } from '../server/seed.js';
 import * as models from '../server/models.js';
 import { rankUsers, streaks, daysAgo, dayKey, snapshotCollege } from '../server/metrics.js';
-import { fetchLeetCode, syncUser, finalizeExpiredChallenges } from '../server/leetcode.js';
+import { fetchLeetCode, syncUser, finalizeExpiredChallenges, milestones } from '../server/leetcode.js';
 const { User, Group, Challenge, Snapshot, Activity, Roster, Department } = models;
 let db, app, alice, bob, admin, aliceId, bobId, adminId, groupId, code, challengeId;
 async function client() {
@@ -234,6 +234,23 @@ test('owner can delete a group and its private challenges and messages', async (
   await alice.send('post', '/auth/login', { email: 'alice@test.example', password: 'Another-password-2026!' });
   await alice.send('delete', `/groups/${groupId}`); assert.equal(await Challenge.countDocuments({ group: groupId }), 0); assert.equal(await Activity.countDocuments({ group: groupId }), 0);
   await bob.send('get', `/groups/${groupId}`, undefined, 404);
+});
+test('feed milestones skip first syncs and announce each threshold once', () => {
+  assert.deepEqual(milestones({ total: 0 }, { total: 300, hard: 5, calendar: {} }), []);
+  const before = { syncedAt: new Date(), total: 98, hard: 0, rating: 1500, contestHistory: [{ rating: 1600 }], calendar: {} };
+  assert.deepEqual(milestones(before, { total: 101, hard: 1, rating: 1650, calendar: {} }), ['reached 100 problems solved', 'solved their first Hard problem', 'reached a new contest rating peak of 1650']);
+  assert.deepEqual(milestones(before, { total: 99, hard: 0, rating: 1550, calendar: {} }), []);
+});
+test('feed hides sync noise and suggests problems followed students solved this week', async () => {
+  const now = Math.floor(Date.now() / 1000);
+  await User.updateOne({ _id: aliceId }, { 'stats.recent': [{ title: 'Two Sum', slug: 'two-sum', timestamp: now - 3600 }, { title: 'Old Problem', slug: 'old-problem', timestamp: now - 30 * 86400 }] });
+  await User.updateOne({ _id: bobId }, { $addToSet: { following: aliceId }, 'stats.recent': [] });
+  await Activity.create([{ college: 'campus', user: aliceId, type: 'sync', text: 'synced 3 additional solved problems' }, { college: 'campus', user: aliceId, type: 'milestone', text: 'reached 100 problems solved' }]);
+  const feed = await bob.send('get', '/users/feed/activity');
+  assert.ok(feed.some(f => f.type === 'milestone')); assert.ok(!feed.some(f => f.type === 'sync'));
+  const summary = await bob.send('get', '/users/feed/summary');
+  assert.deepEqual(summary.picks.map(p => [p.slug, p.solvers.map(x => x.name)]), [['two-sum', ['Alice Student']]]);
+  await Activity.deleteMany({ user: aliceId, type: { $in: ['sync', 'milestone'] } });
 });
 test('contests grade LeetCode submissions inside the window and keep problems hidden until the start', async () => {
   const { Contest } = models;

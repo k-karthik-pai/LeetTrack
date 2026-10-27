@@ -1,4 +1,4 @@
-import { state, $, $$, esc, icon, num, date, gain, timeAgo, avatar, badge, empty, mount, api, heatmap, lineChart, doughnut, navigate } from './core.js';
+import { state, $, $$, esc, icon, num, date, gain, feedItem, bindProfiles, timeAgo, avatar, badge, empty, mount, api, heatmap, lineChart, doughnut, navigate } from './core.js';
 import { challengeDetails } from './community.js';
 const cap = text => text[0].toUpperCase() + text.slice(1);
 export async function dashboard() {
@@ -14,9 +14,9 @@ export async function dashboard() {
   <section class="panel pad lc-activity-panel"><div class="panel-head"><h2>${available ? num(Object.values(calendar).reduce((s, c) => s + c, 0)) + ' submissions' : 'Submission activity'}</h2></div>${heatmap(calendar)}</section>
   <section class="panel lc-history-panel"><div class="lc-panel-tabs" role="tablist">${[['recent', 'Recent AC'], ['activity', 'Activity'], ['rank', 'Rank history']].map(([key, label], i) => `<button role="tab" aria-selected="${!i}" class="${!i ? 'active' : ''}" data-overview-tab="${key}">${label}</button>`).join('')}</div><div id="overview-tab-content"></div></section>
   ${active ? `<section class="panel pad"><div class="between"><div><span class="muted small">Challenge</span><h2 style="margin-top:5px">${esc(active.title)}</h2></div><button class="btn primary" id="active-challenge">${participant ? 'View' : 'Join'}</button></div><div class="between small" style="margin-top:15px"><span class="muted">${participant ? `${participant.progress} / ` : ''}${active.target} ${active.metric === 'total' ? 'problems' : active.metric}</span><span class="muted">${Math.max(0, Math.ceil((new Date(active.endsAt) - Date.now()) / 86400000))} days left</span></div>${participant ? `<div class="progress-track"><span style="width:${Math.min(100, participant.progress / active.target * 100)}%"></span></div>` : ''}</section>` : ''}
-  ${feed.length ? `<section class="panel pad"><div class="panel-head"><h2>Friends activity</h2><a href="#community" class="btn ghost small">${icon('chevron-right')}</a></div>${feed.slice(0, 3).map((f, i) => `<div class="feed-item">${avatar(f.userName, i)}<div><p><strong>${esc(f.userName)}</strong> ${esc(f.message)}</p><small>${timeAgo(f.createdAt)}</small></div></div>`).join('')}</section>` : ''}
+  ${feed.length ? `<section class="panel pad"><div class="panel-head"><h2>Following</h2><a href="#community" class="btn ghost small" aria-label="Open community">${icon('chevron-right')}</a></div>${feed.slice(0, 3).map(feedItem).join('')}</section>` : ''}
   </div></div>`);
-  doughnut('solved-chart', stats);
+  doughnut('solved-chart', stats); bindProfiles();
   function tab(key) {
     state.charts.filter(c => c.canvas.id === 'overview-plot').forEach(c => c.destroy()); state.charts = state.charts.filter(c => c.canvas.id !== 'overview-plot');
     $$('[data-overview-tab]').forEach(b => { b.classList.toggle('active', b.dataset.overviewTab === key); b.setAttribute('aria-selected', String(b.dataset.overviewTab === key)); });

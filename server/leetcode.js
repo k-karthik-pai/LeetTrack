@@ -1,6 +1,6 @@
-import { User, Activity, Challenge } from './models.js';
+import { User, Activity, Challenge, Snapshot } from './models.js';
 import { calculateScoreFromStats } from '../backend/services/scoreService.js';
-import { dayKey, snapshotCollege } from './metrics.js';
+import { dayKey, snapshotCollege, streaks } from './metrics.js';
 import { OfficialGraphQLProvider } from '../integrations/analyzer/provider.js';
 
 const endpoint = 'https://leetcode.com/graphql/';
@@ -48,6 +48,29 @@ export async function fetchProblem(slug, fetcher = fetch) {
   const q = data.question;
   return q && { slug: q.titleSlug, title: `${q.questionFrontendId}. ${q.title}`, difficulty: q.difficulty, premium: !!q.isPaidOnly };
 }
+// Feed-worthy events between two syncs. The first sync of a handle produces none, so joining never floods the feed.
+export function milestones(before, after) {
+  if (!before.syncedAt) return [];
+  const crossed = (from = 0, to = 0, steps) => steps.filter(n => from < n && to >= n).at(-1);
+  const events = [];
+  const total = crossed(before.total, after.total, [50, 100, 150, 200, 250, 300, 400, 500, 600, 750, 1000, 1250, 1500, 2000, 2500, 3000]);
+  if (total) events.push(`reached ${total} problems solved`);
+  if (!before.hard && after.hard) events.push('solved their first Hard problem');
+  else { const hard = crossed(before.hard, after.hard, [10, 25, 50, 100, 200, 300, 500]); if (hard) events.push(`solved ${hard} Hard problems`); }
+  const peak = Math.max(before.rating || 0, ...(before.contestHistory || []).map(c => c.rating || 0));
+  if (before.rating && after.rating > peak) events.push(`reached a new contest rating peak of ${after.rating}`);
+  const streak = crossed(streaks(before.calendar).current, streaks(after.calendar).current, [7, 14, 30, 50, 100, 200, 365]);
+  if (streak) events.push(`is on a ${streak}-day solving streak`);
+  return events;
+}
+async function rankEvent(user) {
+  const [today, previous] = await Snapshot.find({ user: user._id, handle: user.leetcode }).sort({ date: -1 }).limit(2).lean();
+  if (!today || !previous || today.date !== dayKey()) return;
+  const tier = [1, 3, 10].find(t => previous.rank > t && today.rank <= t);
+  if (!tier) return;
+  const text = tier === 1 ? 'became #1 in the college' : `entered the college top ${tier}`;
+  if (!await Activity.exists({ user: user._id, type: 'rank', text, createdAt: { $gte: new Date(`${dayKey()}T00:00:00Z`) } })) await Activity.create({ college: user.college, user: user._id, type: 'rank', text });
+}
 const running = new Set();
 export async function syncUser(user, { fetcher = fetch, force = false } = {}) {
   const id = String(user._id);
@@ -63,9 +86,10 @@ export async function syncUser(user, { fetcher = fetch, force = false } = {}) {
     const set = Object.fromEntries(Object.entries(stats).map(([key, value]) => [`stats.${key}`, value]));
     const updated = await User.findOneAndUpdate({ _id: user._id, leetcode: user.leetcode }, { $set: { ...set, score: calculateScoreFromStats([{ platform: 'leetcode', problemsSolved: stats.total }]) } }, { new: true });
     if (!updated) throw Object.assign(new Error('The linked account changed during sync. Please retry.'), { status: 409 });
-    const delta = Math.max(0, stats.total - user.stats.total);
-    if (delta) await Activity.create({ college: user.college, user: user._id, type: 'sync', text: `synced ${delta} additional solved problems` });
+    const events = milestones(user.stats, stats);
+    if (events.length) await Activity.insertMany(events.map(text => ({ college: user.college, user: user._id, type: 'milestone', text })));
     await snapshotCollege(user.college);
+    await rankEvent(updated);
     return updated;
   } catch (error) {
     await User.updateOne({ _id: user._id, leetcode: user.leetcode }, { 'stats.syncError': error.message.slice(0, 300) });

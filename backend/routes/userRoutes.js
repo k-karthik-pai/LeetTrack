@@ -10,7 +10,8 @@ import {
   followUser,
   unfollowUser,
   getPublicProfile,
-  getFeed
+  getFeed,
+  getFeedSummary
 } from "../controllers/socialController.js";
 
 const router = express.Router();
@@ -24,5 +25,6 @@ router.post("/:id/follow", authMiddleware, followUser);
 router.post("/:id/unfollow", authMiddleware, unfollowUser);
 router.get("/:id/profile", authMiddleware, getPublicProfile);
 router.get("/feed/activity", authMiddleware, getFeed);
+router.get("/feed/summary", authMiddleware, getFeedSummary);
 
 export default router;

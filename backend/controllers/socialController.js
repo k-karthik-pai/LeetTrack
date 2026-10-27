@@ -26,7 +26,26 @@ export const getPublicProfile = async (req, res) => {
 };
 export const getFeed = async (req, res) => {
   const ids = req.user.following.concat([req.user._id]);
-  const feed = await Activity.find({ college: req.user.college, user: { $in: ids }, group: null }).sort({ createdAt: -1 }).limit(30).populate('user', 'name');
+  const feed = await Activity.find({ college: req.user.college, user: { $in: ids }, group: null, type: { $ne: 'sync' } }).sort({ createdAt: -1 }).limit(30).populate('user', 'name');
   const canSee = await visibleTo(req.user);
-  res.json(feed.filter(f => !f.user || canSee(f.user)).map(f => ({ id: String(f._id), userId: f.user ? String(f.user._id) : null, userName: f.user?.name || 'Former student', message: f.text, createdAt: f.createdAt })));
+  res.json(feed.filter(f => !f.user || canSee(f.user)).map(f => ({ id: String(f._id), userId: f.user ? String(f.user._id) : null, userName: f.user?.name || 'Former student', type: f.type, message: f.text, createdAt: f.createdAt })));
+};
+// Weekly progress among the people you follow, and problems they solved this week that are not in your recent solves.
+export const getFeedSummary = async (req, res) => {
+  const canSee = await visibleTo(req.user);
+  const circle = new Set([...req.user.following.map(String), req.userId]);
+  const people = (await rankedCollege(req.user.college)).filter(u => circle.has(u.id) && canSee(u));
+  const week = people.map(u => ({ id: u.id, name: u.name, gain: u.weekly ?? u.sinceStart, since: u.weekly == null ? u.trackedSince : null }))
+    .filter(u => u.gain != null).sort((a, b) => b.gain - a.gain || a.name.localeCompare(b.name)).slice(0, 10);
+  const mine = new Set((req.user.stats.recent || []).map(s => s.slug)), cutoff = Date.now() / 1000 - 7 * 86400, picks = new Map();
+  for (const u of people) {
+    if (u.id === req.userId) continue;
+    for (const s of u.stats.recent || []) {
+      if (s.timestamp < cutoff || mine.has(s.slug)) continue;
+      const pick = picks.get(s.slug) || { slug: s.slug, title: s.title, solvers: [], latest: 0 };
+      if (!pick.solvers.some(x => x.id === u.id)) pick.solvers.push({ id: u.id, name: u.name });
+      pick.latest = Math.max(pick.latest, s.timestamp); picks.set(s.slug, pick);
+    }
+  }
+  res.json({ week, picks: [...picks.values()].sort((a, b) => b.solvers.length - a.solvers.length || b.latest - a.latest).slice(0, 8) });
 };
