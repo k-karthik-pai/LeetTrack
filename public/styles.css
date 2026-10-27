@@ -13,3 +13,4 @@
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 .field label.check{display:flex;align-items:center;gap:8px;font-weight:400;margin:6px 0}
 .rank-cell{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}.rank-cell .icon{width:15px;height:15px}
+.chat-log{max-height:420px;overflow-y:auto;scrollbar-width:thin;padding-right:6px}
