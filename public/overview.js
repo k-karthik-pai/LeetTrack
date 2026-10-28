@@ -19,7 +19,9 @@ export async function dashboard() {
   doughnut('solved-chart', stats);
   $$('[data-connections]').forEach(button => button.onclick = () => buttonBusy(button, () => showConnections(button.dataset.connections)));  bindProfiles();
   function tab(key) {
-    state.charts.filter(c => c.canvas.id === 'overview-plot').forEach(c => c.destroy()); state.charts = state.charts.filter(c => c.canvas.id !== 'overview-plot');
+    // Split before destroying: Chart.js clears `canvas` on destroy().
+    const old = state.charts.filter(c => c.canvas?.id === 'overview-plot');
+    state.charts = state.charts.filter(c => !old.includes(c)); old.forEach(c => c.destroy());
     $$('[data-overview-tab]').forEach(b => { b.classList.toggle('active', b.dataset.overviewTab === key); b.setAttribute('aria-selected', String(b.dataset.overviewTab === key)); });
     if (key === 'recent') {
       $('#overview-tab-content').innerHTML = stats.recent?.length ? `<div class="lc-recent-list">${stats.recent.map(s => `<a class="lc-recent-row" href="https://leetcode.com/problems/${encodeURIComponent(s.slug)}/" target="_blank" rel="noopener"><span>${esc(s.title)}</span><span>${timeAgo(s.timestamp * 1000)}</span></a>`).join('')}</div>` : empty('No submissions', me.leetcode ? '' : 'Link your LeetCode account in Settings.', 'code-xml', !me.leetcode ? '<a class="btn primary" href="#settings">Link LeetCode</a>' : '');
