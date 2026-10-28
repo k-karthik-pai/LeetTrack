@@ -6,16 +6,20 @@ import { OfficialGraphQLProvider } from '../integrations/analyzer/provider.js';
 const endpoint = 'https://leetcode.com/graphql/';
 export async function fetchLeetCode(username, fetcher = fetch) {
   const original = await new OfficialGraphQLProvider(endpoint, undefined, fetcher).getProfile(username, 2);
-  if (original.status !== 'SUCCESS') throw new Error(/abort|timeout/i.test(original.errorMessage || '') ? 'LeetCode took too long to respond. Your saved data is unchanged. Try Sync again.' : original.errorMessage || 'LeetCode could not provide statistics.');
+  if (original.status !== 'SUCCESS') throw new Error(/abort|timeout/i.test(original.errorMessage || '') ? 'LeetCode took too long to respond. Your saved data is unchanged. Updates will retry automatically.' : original.errorMessage || 'LeetCode could not provide statistics.');
   let calendar;
   try {
-    calendar = Object.fromEntries(Object.entries(JSON.parse(original.submissionCalendar || '{}')).map(([timestamp, count]) => [dayKey(Number(timestamp) * 1000), Number(count)]));
+    if (original.calendarAvailable !== false) {
+      calendar = Object.fromEntries(Object.entries(JSON.parse(original.submissionCalendar || '{}')).map(([timestamp, count]) => [dayKey(Number(timestamp) * 1000), Number(count)]));
+    }
   } catch { throw new Error('LeetCode returned an invalid activity calendar. Please try again.'); }
   const warnings = [];
   if (original.contestHistory === undefined) warnings.push('Contest history is temporarily unavailable.');
   if (original.recentSubmissions === undefined) warnings.push('Recent submissions are temporarily unavailable.');
   return {
-    total: original.total, easy: original.easy, medium: original.medium, hard: original.hard, calendar,
+    total: original.total, easy: original.easy, medium: original.medium, hard: original.hard,
+    ...(calendar !== undefined ? { calendar } : {}),
+    calendarAvailable: original.calendarAvailable !== false, calendarPrivate: !!original.calendarPrivate,
     rating: Math.round(original.contestRating || 0),
     ...(original.contestRanking !== undefined ? {
       globalRanking: original.contestRanking?.globalRanking || 0,
@@ -104,18 +108,21 @@ export async function finalizeExpiredChallenges(user) {
   }
 }
 export function startScheduler() {
-  let busy = false;
-  const timer = setInterval(async () => {
-    if (busy) return; busy = true;
+  let busy = false, stopped = false;
+  const tick = async () => {
+    if (busy || stopped) return; busy = true;
     try {
       const users = await User.find({ demo: false, leetcode: { $type: 'string' } });
       for (const user of users) {
+        if (stopped) break;
         try { await syncUser(user); } catch (e) { if (e.status !== 429) console.warn(`Sync skipped for ${user._id}: ${e.message}`); }
         await new Promise(resolve => setTimeout(resolve, 1500));
       }
     } catch (e) { console.error('Scheduled sync failed:', e.message); }
     finally { busy = false; }
-  }, Math.max(1, Number(process.env.SYNC_INTERVAL_MINUTES || 60)) * 60000);
+  };
+  const timer = setInterval(tick, Math.max(1, Number(process.env.SYNC_INTERVAL_MINUTES || 60)) * 60000);
+  tick();
   timer.unref();
-  return () => clearInterval(timer);
+  return () => { stopped = true; clearInterval(timer); };
 }

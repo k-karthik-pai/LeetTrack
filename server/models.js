@@ -5,7 +5,7 @@ const ref = { type: Schema.Types.ObjectId, ref: 'User' };
 const statSchema = new Schema({
   total: { type: Number, default: 0 }, easy: { type: Number, default: 0 }, medium: { type: Number, default: 0 }, hard: { type: Number, default: 0 },
   rating: { type: Number, default: 0 }, globalRanking: { type: Number, default: 0 }, contests: { type: Number, default: 0 },
-  calendar: { type: Map, of: Number, default: {} },
+  calendar: { type: Map, of: Number, default: {} }, calendarAvailable: Boolean, calendarPrivate: Boolean,
   contestHistory: [{ _id: false, title: String, date: String, rating: Number, ranking: Number }],
   recent: [{ _id: false, title: String, slug: String, timestamp: Number, language: String }],
   syncedAt: Date, syncError: String

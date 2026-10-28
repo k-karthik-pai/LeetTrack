@@ -24,7 +24,8 @@ export function publicUser(user, self = false) {
   const { _id, name, role, college, department, section, semester, bio, leetcode, verified, demo, stats = {}, goal, createdAt } = raw;
   return {
     id: String(_id), name, role, college, department, section, semester, bio, leetcode, verified, demo,
-    stats, goal, createdAt, streak: streaks(stats.calendar),
+    stats: stats.calendarAvailable === false ? { ...stats, calendar: {} } : stats,
+    goal, createdAt, streak: stats.calendarAvailable === false ? { current: null, longest: null, activeDays: null } : streaks(stats.calendar),
     ...(self ? { email: raw.email, following: (raw.following || []).map(String), visibility: raw.visibility || 'college', visibleGroups: (raw.visibleGroups || []).map(String) } : {})
   };
 }
