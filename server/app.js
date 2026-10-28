@@ -5,6 +5,7 @@ import helmet from 'helmet';
 import { rateLimit } from 'express-rate-limit';
 import crypto from 'node:crypto';
 import path from 'node:path';
+import { existsSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { OAuth2Client } from 'google-auth-library';
 import bcrypt from 'bcryptjs';
@@ -110,9 +111,13 @@ export function createApp({ mongoUrl, secret, disableRateLimit = false, leetCode
   app.use('/api', auth, contestRoutes);
   app.use('/api/admin', auth, admin, adminRoutes);
   app.use('/api', (req, res) => res.status(404).json({ error: 'API endpoint not found.' }));
-  app.get('/vendor/chart.js', (req, res) => res.sendFile(path.join(root, 'node_modules/chart.js/dist/chart.umd.js')));
-  app.get('/vendor/lucide.js', (req, res) => res.sendFile(path.join(root, 'node_modules/lucide/dist/umd/lucide.js')));
-  app.use(express.static(path.join(root, 'public'), { etag: true }));
+  const frontend = path.join(root, 'dist');
+  app.use(express.static(frontend, { etag: true, index: false }));
+  app.get('/', (req, res) => {
+    const index = path.join(frontend, 'index.html');
+    if (!existsSync(index)) return res.status(503).type('text').send('Frontend is not built. Run npm run build, or use npm run dev for local development.');
+    res.set('Cache-Control', 'no-cache').sendFile(index);
+  });
   app.use((error, req, res, next) => {
     if (error.code === 'LIMIT_FILE_SIZE') return res.status(413).json({ error: 'File is too large. Upload up to 2 MB.' });
     if (error.name === 'MulterError') return res.status(400).json({ error: 'Upload one CSV or XLSX file using the file field.' });

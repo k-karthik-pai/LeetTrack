@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { createAutomaticSync } from '../public/auto-sync.js';
+import { createAutomaticSync } from '../client/src/lib/auto-sync.js';
 
 function setup(request) {
   const state = { time: 600_000, user: { id: 'student', leetcode: 'handle', stats: { total: 10 } }, visible: true, editing: false, renders: 0, calls: [] };

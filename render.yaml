@@ -5,8 +5,8 @@ services:
     runtime: node
     plan: free
     region: singapore
-    branch: main
-    buildCommand: npm ci --omit=dev --ignore-scripts
+    branch: REACT-PORT
+    buildCommand: npm ci --include=dev --ignore-scripts && npm run build
     startCommand: npm start
     healthCheckPath: /api/health
     autoDeployTrigger: commit
