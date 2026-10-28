@@ -38,6 +38,38 @@ test('CSRF and strict validation prevent unauthorized writes and role injection'
   await outsider.send('post', '/auth/register', { ...signup('Fake', 'x@test.example'), semester: 0 }, 400);
   await outsider.send('post', '/auth/register', signup('Fake', 'alice@test.example'), 409);
 });
+
+test('dashboard follower counts and connection lists track follows without exposing credentials', async () => {
+  await alice.send('post', `/users/${bobId}/follow`, {});
+  try {
+    const { me } = await alice.send('get', '/dashboard');
+    assert.equal(me.followingCount, 1); assert.equal(me.followersCount, 0);
+    const bobProfile = await bob.send('get', '/users/me');
+    assert.equal(bobProfile.user.followersCount, 1);
+    const following = await alice.send('get', '/users/me/connections?kind=following');
+    assert.equal(following.total, 1); assert.deepEqual(following.users.map(u => u.id), [bobId]);
+    assert.equal(following.users[0].leetcode, 'bob');
+    assert.deepEqual(Object.keys(following.users[0]).sort(), ['id', 'leetcode', 'name', 'totalSolved']);
+    const followers = await bob.send('get', '/users/me/connections?kind=followers');
+    assert.deepEqual(followers.users.map(u => u.id), [aliceId]);
+  } finally { await alice.send('post', `/users/${bobId}/unfollow`, {}); }
+});
+
+test('connection lists respect college and profile visibility and require authentication', async () => {
+  await request(app).get('/api/users/me/connections').expect(401);
+  await alice.send('get', '/users/me/connections?kind=anything', undefined, 400);
+  await alice.send('post', `/users/${bobId}/follow`, {});
+  try {
+    await User.updateOne({ _id: bobId }, { visibility: 'private' });
+    const hidden = await alice.send('get', '/users/me/connections?kind=following');
+    assert.equal(hidden.total, 1); assert.deepEqual(hidden.users, []);
+    await User.updateOne({ _id: bobId }, { visibility: 'college', college: 'another-college' });
+    assert.deepEqual((await alice.send('get', '/users/me/connections?kind=following')).users, []);
+  } finally {
+    await User.updateOne({ _id: bobId }, { visibility: 'college', college: 'campus' });
+    await alice.send('post', `/users/${bobId}/unfollow`, {});
+  }
+});
 test('signup requires LeetCode but does not require or invent academic fields', async () => {
   const newcomer = await client();
   const data = signup('New Student', 'new@test.example');
@@ -73,6 +105,42 @@ test('configured RVCE domain accepts college addresses and rejects other domains
   } finally {
     if (previous === undefined) delete process.env.COLLEGE_EMAIL_DOMAIN; else process.env.COLLEGE_EMAIL_DOMAIN = previous;
     if (created) { await Snapshot.deleteMany({ user: created }); await User.deleteOne({ _id: created }); }
+  }
+});
+
+test('legacy unknown links cannot sync or appear in rankings until the student explicitly links a profile', async () => {
+  await User.updateOne({ _id: aliceId }, { $set: { leetcode: 'unknown', 'stats.total': 212, 'stats.rating': 1335 }, $unset: { leetcodeLinkedAt: 1 } });
+  await Activity.create({ college: 'campus', user: aliceId, type: 'milestone', text: 'incorrect old handle milestone' });
+  try {
+    const returning = await client();
+    const signedIn = await returning.send('post', '/auth/login', { email: 'alice@test.example', password: 'Test-password-2026!' });
+    assert.equal(signedIn.user.needsLeetCodeLink, true); assert.equal(signedIn.user.leetcode, undefined);
+    assert.equal(signedIn.user.stats.total, null); assert.equal((await User.findById(aliceId)).stats.total, 212);
+    await returning.send('get', '/dashboard', undefined, 428);
+    await returning.send('post', '/users/refresh-stats', {}, 428);
+    assert.equal((await bob.send('get', '/leaderboard')).users.some(u => u.id === aliceId), false);
+    await bob.send('get', `/users/${aliceId}/profile`, undefined, 404);
+    const repaired = await alice.send('put', '/users/profiles', { name: 'Alice Student', leetcode: 'https://leetcode.com/u/Samarthan_17/' });
+    assert.equal(repaired.user.leetcode, 'samarthan_17'); assert.equal(repaired.user.needsLeetCodeLink, false);
+    assert.equal(repaired.user.stats.total, 0); assert.ok((await User.findById(aliceId)).leetcodeLinkedAt);
+    assert.equal(await Activity.countDocuments({ user: aliceId, text: 'incorrect old handle milestone' }), 0);
+    assert.equal((await Snapshot.find({ user: aliceId })).every(row => row.handle === 'samarthan_17'), true);
+    await alice.send('get', '/dashboard');
+  } finally {
+    await alice.send('put', '/users/profiles', { name: 'Alice Student', leetcode: 'alice' });
+  }
+});
+
+test('unknown remains a valid handle when a student explicitly chooses it during registration', async () => {
+  const explicit = await client(); let id;
+  try {
+    const linked = await explicit.send('post', '/auth/register', { ...signup('Explicit Handle', 'explicit@test.example'), leetcode: 'unknown' }, 201);
+    id = linked.user.id;
+    assert.equal(linked.user.leetcode, 'unknown'); assert.equal(linked.user.needsLeetCodeLink, false);
+    assert.ok((await User.findById(id)).leetcodeLinkedAt);
+    await explicit.send('get', '/dashboard');
+  } finally {
+    if (id) { await Snapshot.deleteMany({ user: id }); await User.deleteOne({ _id: id }); }
   }
 });
 test('passwords are hashed and public responses exclude email and credentials', async () => {

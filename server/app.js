@@ -16,6 +16,7 @@ import { User, Snapshot, Group, Challenge, Activity, Department } from './models
 import { publicUser, rankedCollege, dailyActivity } from './metrics.js';
 import { parse, fail, visibilitySchema } from './validation.js';
 import { visibleTo } from './visibility.js';
+import { needsLeetCodeLink } from './onboarding.js';
 import groupRoutes from './groups.js';
 import contestRoutes from './contests.js';
 import adminRoutes from './admin.js';
@@ -75,8 +76,8 @@ export function createApp({ mongoUrl, secret, disableRateLimit = false, leetCode
       if (!user) {
         user = await User.create({ email: info.email, name: info.name || info.email.split('@')[0], googleId: info.sub, college: 'campus' });
       }
-      if (user.leetcode) { try { user = await (await import('./leetcode.js')).syncUser(user, { fetcher: req.app.locals.leetCodeFetch }); } catch {} }
-      await signIn(req, user); res.redirect(user.leetcode ? '/#dashboard' : '/#settings');
+      if (!needsLeetCodeLink(user)) { try { user = await (await import('./leetcode.js')).syncUser(user, { fetcher: req.app.locals.leetCodeFetch }); } catch {} }
+      await signIn(req, user); res.redirect(needsLeetCodeLink(user) ? '/#settings' : '/#dashboard');
     } catch (e) { res.redirect(`/?authError=${encodeURIComponent(e.status ? e.message : 'Google sign-in could not be completed. Please try again.')}#login`); }
   });
   app.use('/api', rankboardRoutes);

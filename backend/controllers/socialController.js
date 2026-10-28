@@ -3,6 +3,7 @@ import { User, Activity, Snapshot } from '../../server/models.js';
 import { publicUser, rankedCollege } from '../../server/metrics.js';
 import { fail, validId } from '../../server/validation.js';
 import { visibleTo } from '../../server/visibility.js';
+import { needsLeetCodeLink } from '../../server/onboarding.js';
 export const followUser = async (req, res) => {
   const targetId = validId(req.params.id), meId = req.userId;
   if (meId === targetId) fail('You cannot follow yourself.');
@@ -18,17 +19,30 @@ export const unfollowUser = async (req, res) => {
   await User.updateOne({ _id: targetId, college: req.user.college }, { $pull: { followers: req.userId } });
   res.json({ message: 'Student unfollowed.' });
 };
+export const getConnections = async (req, res) => {
+  const kind = req.query.kind || 'followers';
+  if (!['followers', 'following'].includes(kind)) fail('Choose followers or following.');
+  const ids = req.user[kind] || [];
+  const people = await User.find({ _id: { $in: ids }, college: req.user.college }).sort({ name: 1 }).lean();
+  const canSee = await visibleTo(req.user);
+  const users = people.filter(canSee).map(user => {
+    const profile = publicUser(user);
+    return { id: profile.id, name: profile.name, leetcode: profile.leetcode, totalSolved: profile.stats.total };
+  });
+  res.json({ total: ids.length, users });
+};
 export const getPublicProfile = async (req, res) => {
   const user = await User.findOne({ _id: validId(req.params.id), college: req.user.college });
   if (!user || !(await visibleTo(req.user))(user)) fail('Student not found.', 404);
+  if (needsLeetCodeLink(user)) fail('This student has not linked a LeetCode profile yet.', 404);
   const rank = (await rankedCollege(user.college)).find(u => u.id === String(user._id));
   res.json({ ...publicUser(user), rank: rank.rank, percentile: rank.percentile, followers: user.followers.length, following: user.following.length, history: await Snapshot.find({ user: user._id }).sort({ date: 1 }).lean() });
 };
 export const getFeed = async (req, res) => {
   const ids = req.user.following.concat([req.user._id]);
-  const feed = await Activity.find({ college: req.user.college, user: { $in: ids }, group: null, type: { $ne: 'sync' } }).sort({ createdAt: -1 }).limit(30).populate('user', 'name');
+  const feed = await Activity.find({ college: req.user.college, user: { $in: ids }, group: null, type: { $ne: 'sync' } }).sort({ createdAt: -1 }).limit(30).populate('user', 'name leetcode leetcodeLinkedAt');
   const canSee = await visibleTo(req.user);
-  res.json(feed.filter(f => !f.user || canSee(f.user)).map(f => ({ id: String(f._id), userId: f.user ? String(f.user._id) : null, userName: f.user?.name || 'Former student', type: f.type, message: f.text, createdAt: f.createdAt })));
+  res.json(feed.filter(f => !f.user || (canSee(f.user) && !needsLeetCodeLink(f.user))).map(f => ({ id: String(f._id), userId: f.user ? String(f.user._id) : null, userName: f.user?.name || 'Former student', type: f.type, message: f.text, createdAt: f.createdAt })));
 };
 // Weekly progress among the people you follow, and problems they solved this week that are not in your recent solves.
 export const getFeedSummary = async (req, res) => {

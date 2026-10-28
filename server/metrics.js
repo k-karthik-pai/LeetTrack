@@ -1,5 +1,6 @@
 import { User, Snapshot } from './models.js';
 import { computeRankingsAndDiffs } from '../integrations/analyzer/ranking.js';
+import { needsLeetCodeLink } from './onboarding.js';
 
 export const dayKey = (date = new Date()) => new Date(date).toISOString().slice(0, 10);
 export const daysAgo = days => dayKey(Date.now() - days * 86400000);
@@ -21,11 +22,14 @@ export function streaks(calendar, today = dayKey()) {
 }
 export function publicUser(user, self = false) {
   const raw = user.toObject ? user.toObject({ flattenMaps: true }) : user;
-  const { _id, name, role, college, department, section, semester, bio, leetcode, verified, demo, stats = {}, goal, createdAt } = raw;
+  const { _id, name, role, college, department, section, semester, bio, leetcode, verified, demo, goal, createdAt } = raw;
+  const linking = needsLeetCodeLink(raw);
+  const stats = linking ? { total: null, easy: null, medium: null, hard: null, rating: null, contests: null, calendar: {}, recent: [], contestHistory: [] } : raw.stats || {};
   return {
-    id: String(_id), name, role, college, department, section, semester, bio, leetcode, verified, demo,
+    id: String(_id), name, role, college, department, section, semester, bio, leetcode: linking ? undefined : leetcode, verified, demo, needsLeetCodeLink: linking,
+    followersCount: (raw.followers || []).length, followingCount: (raw.following || []).length,
     stats: stats.calendarAvailable === false ? { ...stats, calendar: {} } : stats,
-    goal, createdAt, streak: stats.calendarAvailable === false ? { current: null, longest: null, activeDays: null } : streaks(stats.calendar),
+    goal, createdAt, streak: linking || stats.calendarAvailable === false ? { current: null, longest: null, activeDays: null } : streaks(stats.calendar),
     ...(self ? { email: raw.email, following: (raw.following || []).map(String), visibility: raw.visibility || 'college', visibleGroups: (raw.visibleGroups || []).map(String) } : {})
   };
 }
@@ -56,7 +60,7 @@ export function rankUsers(users, metric = 'total', handleMissing = true) {
   });
 }
 export async function rankedCollege(college, metric = 'total') {
-  const users = await User.find({ college }).lean();
+  const users = (await User.find({ college }).lean()).filter(user => !needsLeetCodeLink(user));
   const ids = users.map(u => u._id);
   const history = await Snapshot.find({ user: { $in: ids } }).sort({ date: 1 }).lean();
   const byUser = new Map();

@@ -13,7 +13,7 @@ export function createAutomaticSync({ getUser, setUser, request, canRender, rend
         let data;
         try { data = await request('/users/refresh-stats', { method: 'POST' }); }
         catch (error) {
-          if (![409, 429].includes(error.status)) throw error;
+          if (![409, 428, 429].includes(error.status)) throw error;
           data = await request('/users/me');
         }
         if (getUser()?.id !== user.id || getUser()?.leetcode !== user.leetcode) return;

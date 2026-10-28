@@ -5,6 +5,7 @@ import { User, Roster, Department } from '../../server/models.js';
 import { publicUser } from '../../server/metrics.js';
 import { parse, fail, registerSchema, loginSchema } from '../../server/validation.js';
 import { syncUser } from '../../server/leetcode.js';
+import { needsLeetCodeLink } from '../../server/onboarding.js';
 export async function validateAcademic(college, department, section) {
   const dept = await Department.findOne({ college, code: department });
   if (!dept || !dept.sections.includes(section)) fail('Select a valid department and section.');
@@ -28,9 +29,9 @@ export const register = async (req, res) => {
   if (existing) fail('This email is already registered. Sign in instead.', 409);
   const hashed = await bcrypt.hash(data.password, 12);
   const { password, ...profile } = data;
-  let user = await User.create({ ...profile, leetcode: data.leetcode || undefined, passwordHash: hashed, college: 'campus', verified: false, profiles: { leetcode: data.leetcode || undefined } });
+  let user = await User.create({ ...profile, leetcode: data.leetcode || undefined, leetcodeLinkedAt: new Date(), passwordHash: hashed, college: 'campus', verified: false, profiles: { leetcode: data.leetcode || undefined } });
   await Roster.deleteOne({ college: 'campus', email: data.email });
-  if (user.leetcode) { try { user = await syncUser(user, { fetcher: req.app.locals.leetCodeFetch }); } catch { user = await User.findById(user._id); } }
+  if (!needsLeetCodeLink(user)) { try { user = await syncUser(user, { fetcher: req.app.locals.leetCodeFetch }); } catch { user = await User.findById(user._id); } }
   await signIn(req, user);
   res.status(201).json({ user: publicUser(user, true), csrf: req.session.csrf });
 };
@@ -40,7 +41,7 @@ export const login = async (req, res) => {
   const hash = user?.passwordHash || user?.password;
   const match = await bcrypt.compare(password, hash || '$2b$12$000000000000000000000uGR8rbVuV17P0uKHq9tLAh5D2dVd1ZfJ6');
   if (!user || !hash || !match) fail('Invalid email or password.', 401);
-  if (user.leetcode) { try { user = await syncUser(user, { fetcher: req.app.locals.leetCodeFetch }); } catch { user = await User.findById(user._id); } }
+  if (!needsLeetCodeLink(user)) { try { user = await syncUser(user, { fetcher: req.app.locals.leetCodeFetch }); } catch { user = await User.findById(user._id); } }
   await signIn(req, user);
   res.json({ user: publicUser(user, true), csrf: req.session.csrf });
 };

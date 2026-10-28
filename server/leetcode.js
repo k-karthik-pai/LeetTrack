@@ -2,6 +2,7 @@ import { User, Activity, Challenge, Snapshot } from './models.js';
 import { calculateScoreFromStats } from '../backend/services/scoreService.js';
 import { dayKey, snapshotCollege, streaks } from './metrics.js';
 import { OfficialGraphQLProvider } from '../integrations/analyzer/provider.js';
+import { needsLeetCodeLink } from './onboarding.js';
 
 const endpoint = 'https://leetcode.com/graphql/';
 export async function fetchLeetCode(username, fetcher = fetch) {
@@ -79,6 +80,7 @@ const running = new Set();
 export async function syncUser(user, { fetcher = fetch, force = false } = {}) {
   const id = String(user._id);
   if (!user.leetcode) throw Object.assign(new Error('Link a LeetCode username in your profile first.'), { status: 400 });
+  if (needsLeetCodeLink(user)) throw Object.assign(new Error('Link your LeetCode profile before synchronizing.'), { status: 428 });
   if (user.demo) throw Object.assign(new Error('This is a sample account. Create your own account to synchronize real LeetCode data.'), { status: 400 });
   const cooldown = Number(process.env.SYNC_COOLDOWN_SECONDS ?? 300) * 1000;
   if (!force && user.stats.syncedAt && Date.now() - user.stats.syncedAt.getTime() < cooldown) throw Object.assign(new Error('Your statistics are up to date. Try again in a few minutes.'), { status: 429 });
@@ -115,6 +117,7 @@ export function startScheduler() {
       const users = await User.find({ demo: false, leetcode: { $type: 'string' } });
       for (const user of users) {
         if (stopped) break;
+        if (needsLeetCodeLink(user)) continue;
         try { await syncUser(user); } catch (e) { if (e.status !== 429) console.warn(`Sync skipped for ${user._id}: ${e.message}`); }
         await new Promise(resolve => setTimeout(resolve, 1500));
       }

@@ -28,7 +28,8 @@ No public endpoint accepts role or college assignments.
 
 | Method | Endpoint | Purpose |
 |---|---|---|
-| GET | `/users/me` | Current private profile and CSRF token |
+| GET | `/users/me` | Current private profile, follower/following counts, `needsLeetCodeLink` and CSRF token; unconfirmed legacy links expose no linked statistics |
+| GET | `/users/me/connections?kind=followers` | Your followers, or `kind=following`; `{total, users}` with visible same-college students only, without email or credentials |
 | PUT | `/users/profiles` | Update profile: required name and leetcode; optional bio (`goal` is still accepted but unused) |
 | PUT | `/users/visibility` | `{visibility: "college" \| "groups" \| "private", visibleGroups: [groupId]}`; `groups` needs at least one group you belong to |
 | POST | `/users/password` | Current password + new password; revoke other sessions |
