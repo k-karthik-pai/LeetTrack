@@ -51,3 +51,13 @@ test('a server-side sync cooldown loads the latest saved statistics without anot
   assert.deepEqual(s.calls.map(c => c[0]), ['/users/refresh-stats', '/users/me']);
   assert.equal(s.user.stats.total, 11);
 });
+
+test('an incomplete legacy link updates the session view so onboarding replaces incorrect statistics', async () => {
+  const s = setup(async path => {
+    if (path.endsWith('refresh-stats')) throw Object.assign(new Error('Link your profile'), { status: 428 });
+    return { user: { id: 'student', needsLeetCodeLink: true, stats: { total: null } } };
+  });
+  await s.sync();
+  assert.equal(s.user.needsLeetCodeLink, true); assert.equal(s.user.leetcode, undefined);
+  assert.equal(s.renders, 1);
+});

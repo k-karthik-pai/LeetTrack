@@ -20,7 +20,7 @@ userSchema.add({
   college: { type: String, default: 'campus', index: true },
   // Legacy academic metadata remains readable, but new users receive no invented defaults.
   department: String, section: String, semester: Number,
-  bio: { type: String, default: '' }, leetcode: String,
+  bio: { type: String, default: '' }, leetcode: String, leetcodeLinkedAt: Date,
   verified: { type: Boolean, default: false }, demo: { type: Boolean, default: false },
   following: [ref], stats: { type: statSchema, default: () => ({}) },
   goal: { type: Number, default: 5 },

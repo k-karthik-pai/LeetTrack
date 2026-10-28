@@ -41,7 +41,7 @@ Google credentials must belong to your own application. In [Google Cloud](https:
 http://localhost:3000/api/auth/google/callback
 ```
 
-Set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in `.env`, then restart. The Google button appears only when configured. The server validates OAuth state, nonce, ID-token audience and verified email. New Google users are sent to Settings to link LeetCode before accessing the dashboard. An existing password account must use password login; Google does not silently take over that account.
+Set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in `.env`, then restart. The Google button appears only when configured. The server validates OAuth state, nonce, ID-token audience and verified email. New Google users complete a dedicated LeetCode linking form before accessing the dashboard. Old, unconfirmed `unknown` links require that step too; their unrelated statistics stay hidden until the student explicitly chooses a profile. The actual `unknown` handle can still be deliberately linked. An existing password account must use password login; Google does not silently take over that account.
 
 ## Features
 

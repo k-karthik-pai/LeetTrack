@@ -11,12 +11,14 @@ import {
   unfollowUser,
   getPublicProfile,
   getFeed,
+  getConnections,
   getFeedSummary
 } from "../controllers/socialController.js";
 
 const router = express.Router();
 
 router.get("/me", authMiddleware, getMe);
+router.get("/me/connections", authMiddleware, getConnections);
 router.put("/profiles", authMiddleware, updateProfiles);
 router.post("/refresh-stats", authMiddleware, refreshStats);
 router.get("/stats", authMiddleware, getMyStats);
