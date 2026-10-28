@@ -23,8 +23,11 @@ export const getConnections = async (req, res) => {
   const kind = req.query.kind || 'followers';
   if (!['followers', 'following'].includes(kind)) fail('Choose followers or following.');
   const ids = req.user[kind] || [];
-  const people = await User.find({ _id: { $in: ids }, college: req.user.college }).sort({ name: 1 }).lean();
-  const canSee = await visibleTo(req.user);
+  // Only the fields the list shows; the visibility lookup runs alongside it.
+  const [people, canSee] = await Promise.all([
+    User.find({ _id: { $in: ids }, college: req.user.college }).select('name leetcode leetcodeLinkedAt stats.total').sort({ name: 1 }).lean(),
+    visibleTo(req.user)
+  ]);
   const users = people.filter(canSee).map(user => {
     const profile = publicUser(user);
     return { id: profile.id, name: profile.name, leetcode: profile.leetcode, totalSolved: profile.stats.total };
