@@ -12,7 +12,7 @@ Copy-Item .env.example .env
 npm start
 ```
 
-Open **http://localhost:3000**. Create an account with your name, RVCE email, required LeetCode username, and password. Google users complete a required LeetCode-linking step after sign-in. Statistics load automatically after signup, login, and handle linking. Manual sync and an hourly background sync are also available. Failed upstream requests preserve the last saved statistics and display the error.
+Open **http://localhost:3000**. Create an account with your name, RVCE email, required LeetCode username, and password. Google users complete a required LeetCode-linking step after sign-in. Statistics load automatically after signup, login, and handle linking. Opening or returning to the app refreshes statistics older than five minutes; visible pages continue checking in the background. A server job also runs at startup and hourly. Failed upstream requests preserve the last saved statistics and display the error.
 
 **No demo accounts, statistics, submissions, groups, or challenges are seeded.** Each user starts with their own profile. Academic fields are no longer collected or displayed. Existing legacy metadata is preserved. LeetCode handles track public statistics; ownership of a linked handle is not verified.
 

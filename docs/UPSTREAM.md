@@ -20,7 +20,7 @@ The original source snapshots are retained under `upstream/`, without `.git` or 
 
 - `scripts/prepare-upstream.js` ports the original `provider.ts` and `ranking.ts` to committed runnable JavaScript under `integrations/analyzer/` using Node's TypeScript stripping. Source snapshots are included.
 - The provider receives an injectable fetch function for integration tests and rejects incomplete difficulty responses. Its retry/error handling, GraphQL totals and URL normalization remain active.
-- `server/leetcode.js` uses that provider with its query extended to include calendar, full contest history and recent accepted submissions in one request. Failed requests do not write zeroed statistics.
+- `server/leetcode.js` uses that provider with its query extended to include calendar, full contest history and recent accepted submissions in one request. If the calendar is restricted, the provider retries without that field, preserving access to public profile statistics. Private calendar data is not requested again in that lookup or presented as zero activity. Failed requests do not write zeroed statistics.
 - `server/metrics.js` calls `computeRankingsAndDiffs` for total-solved order, then adds tie-sharing competition ranks and defined percentile semantics.
 - `server/spreadsheets.js` adapts Analyzer's case-insensitive column aliases, URL normalization, duplicate detection, validation and export flow using ExcelJS. MongoDB snapshots replace PostgreSQL/Prisma snapshots to meet the mandatory stack.
 - Analyzer's Next.js/React screens are not mounted because the brief requires an HTML/CSS/JavaScript + Express + MongoDB foundation.

@@ -73,6 +73,11 @@ export function feedItem(f, i) {
   return `<div class="feed-item">${avatar(f.userName, i)}<div><p><button class="table-link" data-profile="${f.userId}"><strong>${esc(f.userName)}</strong></button> ${esc(f.message)}</p><small>${icon(feedIcons[f.type] || 'activity', 'icon-sm')} ${timeAgo(f.createdAt)}</small></div></div>`;
 }
 export function bindProfiles() { $$('[data-profile]').forEach(b => b.onclick = () => navigate(`profile/${b.dataset.profile}`)); }
+export function calendarView(stats) {
+  return stats.calendarAvailable === false
+    ? empty(stats.calendarPrivate ? 'Calendar private' : 'Calendar unavailable', '', 'lock-keyhole', '', true)
+    : heatmap(stats.calendar);
+}
 export function heatmap(calendar = {}) {
   const today = new Date().toISOString().slice(0, 10);
   const start = new Date(`${today}T00:00:00Z`); start.setUTCDate(start.getUTCDate() - 364 - start.getUTCDay());

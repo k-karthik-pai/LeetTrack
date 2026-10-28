@@ -1,11 +1,11 @@
 # Verification
 
-Verified locally on Windows with Node.js 24.19.0 and real MongoDB on 27 October 2026, and re-run on Linux with Node.js 26 on 28 October 2026 after adding visibility, contests and the new feed.
+Latest checks: Windows with Node.js 24.19.0 and real MongoDB on 28 October 2026. The preceding version was also checked on Linux with Node.js 26 after adding visibility, contests and the new feed.
 
 ## Automated checks
 
-- `npm test`: **30 passed, 0 failed**. Uses a separate disposable MongoDB database.
-- `npm run check`: **44 JavaScript modules** passed syntax checks.
+- `npm test`: **36 passed, 0 failed**. Uses a separate disposable MongoDB database.
+- `npm run check`: **46 JavaScript modules** passed syntax checks.
 - `npm audit --omit=dev --audit-level=moderate`: **0 vulnerabilities** after pinning ExcelJS's compatible UUID dependency to its patched release.
 
 Coverage includes:
@@ -50,3 +50,9 @@ Browser checks use an isolated MongoDB process on a separate host/port; test acc
 - Live Google login needs the user's Google Cloud client ID/secret. Token/state validation and configuration handling are implemented; no successful live Google sign-in is claimed.
 - Docker is unavailable on this machine; container files are supplied but not executed.
 - A private GitHub repository and free Atlas cluster have been created. Render deployment is pending its account connection and database credential confirmation; no live production verification is claimed.
+
+## Automatic updates and private calendars
+
+- Automatic refresh covers stale statistics, hidden tabs, overlapping focus events, logout races, cooldowns, and preserving active forms.
+- Calendar permission failures retry the public profile without the calendar. Previously saved private activity is hidden, and streaks remain unavailable rather than zero.
+- Isolated browser check: shaded pill search in dark/light themes, Enter-to-search filtering, no Sync control, and one automatic refresh request after reopening with stale statistics.

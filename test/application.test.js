@@ -207,6 +207,32 @@ test('Google configuration is explicit and OAuth callbacks reject invalid state'
 test('upstream provider returns actual difficulty, calendar and contest fields', async () => {
   const result = await fetchLeetCode('real_handle', providerMock()); assert.equal(result.total, 41); assert.equal(result.easy, 20); assert.equal(result.rating, 1700); assert.equal(result.recent[0].title, 'Two Sum'); assert.equal(result.calendar[dayKey()], 3);
 });
+
+test('private LeetCode calendars do not hide valid profiles or expose previously saved activity', async () => {
+  const queries = [];
+  const fetcher = async (url, opts) => {
+    const query = JSON.parse(opts.body).query; queries.push(query);
+    if (query.includes('userCalendar')) return { ok: true, status: 200, json: async () => ({ data: { matchedUser: null }, errors: [{ message: 'no permission to check the calendar.', path: ['matchedUser', 'userCalendar'] }] }) };
+    const response = await providerMock()(url, opts), body = await response.json();
+    delete body.data.matchedUser.userCalendar;
+    return { ...response, json: async () => body };
+  };
+  const stats = await fetchLeetCode('Keshav___11', fetcher);
+  assert.equal(queries.length, 2); assert.equal(queries[1].includes('userCalendar'), false);
+  assert.equal(stats.total, 41); assert.equal(stats.rating, 1700); assert.equal(stats.recent.length, 1);
+  assert.equal(stats.calendarAvailable, false); assert.equal(stats.calendarPrivate, true);
+  assert.equal(stats.calendar, undefined); assert.equal(stats.syncError, '');
+  await syncUser(await User.findById(aliceId), { force: true, fetcher });
+  const { user } = await alice.send('get', '/users/me');
+  assert.equal(user.stats.total, 41); assert.deepEqual(user.stats.calendar, {});
+  assert.deepEqual(user.streak, { current: null, longest: null, activeDays: null });
+  await syncUser(await User.findById(aliceId), { force: true, fetcher: providerMock() });
+});
+
+test('GraphQL failures are distinct from genuinely missing profiles', async () => {
+  await assert.rejects(fetchLeetCode('handle', async () => ({ ok: true, status: 200, json: async () => ({ errors: [{ message: 'Upstream resolver unavailable' }] }) })), /could not provide profile data/);
+  await assert.rejects(fetchLeetCode('missing', async () => ({ ok: true, status: 200, json: async () => ({ data: { matchedUser: null }, errors: [{ message: 'User does not exist.', path: ['matchedUser'] }] }) })), /Profile not found/);
+});
 test('upstream failures do not overwrite saved statistics', async () => {
   const user = await User.findById(aliceId), previous = user.stats.total;
   await assert.rejects(syncUser(user, { force: true, fetcher: async () => ({ ok: false, status: 403 }) }), /HTTP/);

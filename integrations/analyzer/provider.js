@@ -49,6 +49,8 @@ query getUserData($username: String!) {
 }
 `;
 
+const GRAPHQL_QUERY_WITHOUT_CALENDAR = GRAPHQL_QUERY.replace(/\s+userCalendar\s*\{[^}]*\}/, '');
+
 const USER_AGENTS = [
   'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36',
@@ -107,6 +109,7 @@ export class OfficialGraphQLProvider                              {
 
     let attempt = 0;
     let delay = 1000;
+    let calendarUnavailable = false, calendarPrivate = false;
 
     while (attempt < maxRetries) {
       attempt++;
@@ -130,7 +133,7 @@ export class OfficialGraphQLProvider                              {
           method: 'POST',
           headers,
           body: JSON.stringify({
-            query: GRAPHQL_QUERY,
+            query: calendarUnavailable ? GRAPHQL_QUERY_WITHOUT_CALENDAR : GRAPHQL_QUERY,
             variables: { username },
           }),
           signal: controller.signal,
@@ -168,7 +171,16 @@ export class OfficialGraphQLProvider                              {
 
         const result = await response.json();
 
+        const calendarError = result.errors?.find(error => error.path?.[0] === 'matchedUser' && error.path?.[1] === 'userCalendar');
+        if (calendarError && !calendarUnavailable) {
+          calendarUnavailable = true;
+          calendarPrivate = /permission|private/i.test(calendarError.message || '');
+          if (!result.data?.matchedUser) { attempt--; continue; }
+        }
         if (!result.data || !result.data.matchedUser) {
+          if (!Object.hasOwn(result.data || {}, 'matchedUser') || result.errors?.some(error => !/user.*(does not exist|not found)|profile.*not found/i.test(error.message || ''))) {
+            throw new Error('LeetCode could not provide profile data. Updates will retry automatically.');
+          }
           return {
             username,
             easy: 0,
@@ -238,7 +250,9 @@ if (!acList.some(item => item.difficulty === 'All')) throw new Error('Incomplete
         const activeDays = userCalendar?.totalActiveDays ?? null;
 
         return {
-          username,
+          username: matchedUser.username || username,
+          calendarAvailable: !calendarUnavailable,
+          calendarPrivate,
           easy,
           medium,
           hard,
@@ -251,7 +265,7 @@ if (!acList.some(item => item.difficulty === 'All')) throw new Error('Incomplete
           submissions: totalSubmissions,
           acceptanceRate,
           activeDays,
-          submissionCalendar: userCalendar?.submissionCalendar || '{}',
+          submissionCalendar: calendarUnavailable ? undefined : userCalendar?.submissionCalendar || '{}',
           currentStreak,
           maxStreak: currentStreak,
           status: 'SUCCESS',

@@ -3,9 +3,18 @@ import { dashboard } from './overview.js';
 import { analytics } from './dashboard.js';
 import { leaderboard, groups, groupPage, challenges, community, profile, settings } from './community.js';
 import { admin } from './admin.js';
+import { createAutomaticSync } from './auto-sync.js';
 import { contests, contestPage } from './contests.js';
 const nav = [['dashboard', 'layout-dashboard', 'Dashboard'], ['leaderboard', 'trophy', 'Leaderboard'], ['analytics', 'chart-no-axes-combined', 'Analytics'], ['groups', 'users-round', 'Groups'], ['contests', 'trophy', 'Contests'], ['challenges', 'flag', 'Challenges'], ['community', 'messages-square', 'Community']];
 let renderVersion = 0;
+const automaticSync = createAutomaticSync({
+  getUser: () => state.me,
+  setUser: user => { state.me = user; },
+  request: api,
+  isVisible: () => !document.hidden,
+  canRender: () => ['dashboard', 'analytics', 'leaderboard', 'profile'].includes(state.route) && !$('#modal')?.open && !document.activeElement?.matches('input, select, textarea'),
+  render: refresh
+});
 try { document.documentElement.dataset.theme = localStorage.getItem('leettrack.theme') || 'dark'; } catch {}
 const brand = '<span class="brand-mark">&lt;/&gt;</span><span>LeetTrack<span class="brand-dot">.</span></span>';
 function theme() {
@@ -15,9 +24,8 @@ function theme() {
 }
 function shell(route) {
   const me = state.me, title = [...nav, ['settings', '', 'Settings'], ['profile', '', 'Profile'], ['admin', '', 'Admin']].find(n => n[0] === route)?.[2] || 'Dashboard';
-  $('#app').innerHTML = `<div class="lc-app"><header class="lc-header"><div class="lc-nav-wrap"><a class="brand" href="#dashboard">${brand}</a><nav class="lc-nav" aria-label="Main navigation">${nav.map(([key, glyph, label]) => `<a href="#${key}" class="${route === key ? 'active' : ''}" ${route === key ? 'aria-current="page"' : ''}>${label}</a>`).join('')}</nav><div class="lc-header-actions"><form class="top-search" id="global-search">${icon('search', 'icon-sm')}<input placeholder="Search students" aria-label="Search students" maxlength="80"></form><button class="icon-btn" data-theme-toggle aria-label="Toggle light and dark theme" title="Toggle theme">${icon(document.documentElement.dataset.theme === 'dark' ? 'sun' : 'moon')}</button><button class="btn primary" id="sync-button" title="Sync LeetCode">${icon('refresh-cw')}<span class="btn-label">Sync</span></button><details class="account-menu"><summary aria-label="Account menu">${avatar(me.name)}</summary><div class="account-dropdown"><strong>${esc(me.name)}</strong><a href="#profile">${icon('user-round')}Profile</a><a href="#settings">${icon('settings-2')}Settings</a>${me.role === 'admin' ? '<a href="#admin">'+icon('shield-check')+'Admin</a>' : ''}<button data-guide>${icon('circle-help')}Help</button><button id="logout">${icon('log-out')}Sign out</button></div></details></div></div></header><main class="content lc-content" id="main"><div id="page-content"><div class="loading-content"><span class="spinner" aria-label="Loading"></span></div></div></main></div>`;
+  $('#app').innerHTML = `<div class="lc-app"><header class="lc-header"><div class="lc-nav-wrap"><a class="brand" href="#dashboard">${brand}</a><nav class="lc-nav" aria-label="Main navigation">${nav.map(([key, glyph, label]) => `<a href="#${key}" class="${route === key ? 'active' : ''}" ${route === key ? 'aria-current="page"' : ''}>${label}</a>`).join('')}</nav><div class="lc-header-actions"><form class="top-search" id="global-search" role="search" aria-label="Students">${icon('search', 'icon-sm')}<input type="search" name="q" placeholder="Search students" aria-label="Search students" maxlength="80" autocomplete="off"></form><button class="icon-btn" data-theme-toggle aria-label="Toggle light and dark theme" title="Toggle theme">${icon(document.documentElement.dataset.theme === 'dark' ? 'sun' : 'moon')}</button><details class="account-menu"><summary aria-label="Account menu">${avatar(me.name)}</summary><div class="account-dropdown"><strong>${esc(me.name)}</strong><a href="#profile">${icon('user-round')}Profile</a><a href="#settings">${icon('settings-2')}Settings</a>${me.role === 'admin' ? '<a href="#admin">'+icon('shield-check')+'Admin</a>' : ''}<button data-guide>${icon('circle-help')}Help</button><button id="logout">${icon('log-out')}Sign out</button></div></details></div></div></header><main class="content lc-content" id="main"><div id="page-content"><div class="loading-content"><span class="spinner" aria-label="Loading"></span></div></div></main></div>`;
   $('#logout').onclick = e => buttonBusy(e.currentTarget, async () => { await api('/auth/logout', { method: 'POST' }); state.me = null; state.config = await api('/config'); navigate('login'); refresh(); });
-  $('#sync-button').onclick = e => buttonBusy(e.currentTarget, async () => { const result = await api('/users/refresh-stats', { method: 'POST' }); state.me = result.user; toast(result.user.stats.syncError || 'Synced.', !!result.user.stats.syncError); refresh(); });
   $('#global-search').onsubmit = e => { e.preventDefault(); state.board.q = $('input', e.currentTarget).value; state.board.page = 1; navigate('leaderboard'); refresh(); };
   icons();
 }
@@ -57,11 +65,15 @@ async function render() {
   }
   icons();
 }
-document.addEventListener('click', e => { if (e.target.closest('[data-theme-toggle]')) theme(); if (e.target.closest('[data-guide]')) modal('Help', '<div class="guide-list"><div><strong>Link LeetCode</strong>Settings → LeetCode username → Save.</div><div><strong>Sync</strong>Runs on login and every '+(state.config.syncInterval)+' minutes. Use Sync for a manual refresh.</div><div><strong>Rankings</strong>Ties share a rank. Percentile counts registered peers with fewer solves. Progress uses daily snapshots. The heatmap counts submissions, including retries.</div><div><strong>Groups</strong>Create a group or join with an invitation code. Only members can access it.</div><div><strong>Challenges</strong>Count new solves from the time you join.</div></div>'); });
+document.addEventListener('click', e => { if (e.target.closest('[data-theme-toggle]')) theme(); if (e.target.closest('[data-guide]')) modal('Help', '<div class="guide-list"><div><strong>Link LeetCode</strong>Settings → LeetCode username → Save.</div><div><strong>Updates</strong>LeetCode statistics refresh automatically.</div><div><strong>Rankings</strong>Ties share a rank. Percentile counts registered peers with fewer solves. Progress uses daily snapshots. The heatmap counts submissions, including retries.</div><div><strong>Groups</strong>Create a group or join with an invitation code. Only members can access it.</div><div><strong>Challenges</strong>Count new solves from the time you join.</div></div>'); });
 document.addEventListener('keydown', e => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') { e.preventDefault(); $('#global-search input')?.focus(); } });
-window.addEventListener('hashchange', render);
+window.addEventListener('hashchange', () => { render().then(automaticSync); });
+window.addEventListener('focus', automaticSync);
+document.addEventListener('visibilitychange', automaticSync);
+setInterval(automaticSync, 60_000);
 try {
   state.config = await api('/config');
   try { const data = await api('/users/me'); state.me = data.user; } catch (e) { if (e.status !== 401) throw e; }
   await render();
+  automaticSync();
 } catch (error) { $('#app').innerHTML = `<div class="boot">${icon('cloud-alert')}<h2>Connection error</h2><p>${esc(error.message)}</p><button class="btn primary" id="reload-app">Retry</button></div>`; $('#reload-app').onclick = () => location.reload(); icons(); }
