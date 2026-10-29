@@ -77,4 +77,7 @@ export const gain = (user, period) =>
 export const navigate = (route) => {
   window.location.hash = route;
 };
+export const decodeSearch = (value = '') => {
+  try { return decodeURIComponent(value); } catch { return value; }
+};
 export const formValues = (form) => Object.fromEntries(new FormData(form));

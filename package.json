@@ -39,6 +39,7 @@
     "zod": "^4.1.12"
   },
   "devDependencies": {
+    "@vitejs/plugin-react": "^6.1.2",
     "supertest": "^7.1.4",
     "vite": "^8.3.5"
   },

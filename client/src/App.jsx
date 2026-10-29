@@ -1,5 +1,5 @@
 import { lazy, Suspense, useEffect, useRef, useState } from "react";
-import { api, navigate } from "./lib/api.js";
+import { api, navigate, decodeSearch } from "./lib/api.js";
 import { useHashRoute, useSession } from "./lib/session.jsx";
 import {
   Action,
@@ -337,7 +337,7 @@ export default function App() {
   const pages = {
     dashboard: <Dashboard />,
     analytics: <Analytics />,
-    leaderboard: <Leaderboard search={id ? decodeURIComponent(id) : ""} />,
+    leaderboard: <Leaderboard search={decodeSearch(id)} />,
     groups: id ? <GroupPage id={id} /> : <Groups />,
     challenges: <Challenges />,
     contests: id ? <ContestPage id={id} /> : <Contests />,

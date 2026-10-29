@@ -3,6 +3,7 @@ import {
   useCallback,
   useContext,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
 } from "react";
@@ -41,7 +42,7 @@ export function SessionProvider({ children }) {
     timers.current.add(timer);
   }, []);
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
-  useEffect(() => {
+  useLayoutEffect(() => {
     document.documentElement.dataset.theme = theme;
     try {
       localStorage.setItem("leettrack.theme", theme);

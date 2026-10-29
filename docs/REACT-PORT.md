@@ -1,6 +1,6 @@
 # React port
 
-The `REACT-PORT` branch replaces the active vanilla frontend with React 19 components and Vite. The Express API, MongoDB schemas, authentication cookies, CSRF protection, and background jobs remain compatible with the existing application. No database migration is required.
+The frontend replaces the vanilla page renderer with React 19 components and Vite, building on the existing `REACT-PORT` work. The Express API, MongoDB schemas, authentication cookies, CSRF protection, and background jobs remain compatible with the existing application. No database migration is required.
 
 ## Local development
 
@@ -26,7 +26,9 @@ npm start
 
 Vite builds the frontend into `dist/`; Express serves that output and the API on the same origin. Build tools are required at build time. The old `npm ci --omit=dev` build command is insufficient for this branch.
 
-For a separate Render service or an intentional branch switch, select `REACT-PORT`, build with `npm ci --include=dev --ignore-scripts && npm run build`, start with `npm start`, and keep `/api/health` as the health check. Keep secrets in the service environment. Pushing this branch does not change a Render service that follows `main`.
+Before merging into `main`, the owner of the existing Render service must set its build command to `npm ci --include=dev --ignore-scripts && npm run build`. Keep `npm start`, `/api/health`, the `main` branch, and existing secrets. Editing `render.yaml` alone does not update a manually created Render service. The live team service at `leettrack-rvce-nemj.onrender.com` is not present in the connected Render accounts; its settings cannot be changed from those connections. The migration PR stays unmerged until that build configuration is ready.
+
+The multi-stage Dockerfile also builds the React client before pruning development dependencies, so the final container includes the compiled assets.
 
 ## Ported workflows
 
@@ -47,7 +49,7 @@ React owns page rendering and event handlers; the active frontend has no HTML-st
 
 Run `npm run check`, `npm run build`, and `npm test`. Check the built application against a disposable local database before deploying. Existing API tests continue to exercise authorization, privacy, groups, challenges, contests and spreadsheet behavior. Frontend browser checks are separate from API test results.
 
-The existing `main` branch and live service remain the rollback path. No data migration or deletion is part of this port. Restoring the older branch also requires restoring its older build command.
+The existing `main` branch and live service remain unchanged until the migration is merged. The last vanilla baseline is commit `c54355f`. No data migration or deletion is part of this port. Restoring that version also requires restoring its older build command.
 
 ## Disposable browser preview
 

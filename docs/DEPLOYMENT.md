@@ -15,7 +15,7 @@ Recommended setup: **one Render Node web service + MongoDB Atlas + Google OAuth*
 
 ## 1. Publish the source repository
 
-The source repository is [k-karthik-pai/LeetTrack](https://github.com/k-karthik-pai/LeetTrack). Deploy its `REACT-PORT` branch. Only the **application folder** belongs in this repository; the outer Codex workspace contains local setup tools.
+The source repository is [k-karthik-pai/LeetTrack](https://github.com/k-karthik-pai/LeetTrack). After merging the React migration, deploy its `main` branch. Update the build command below before merging. Only the **application folder** belongs in this repository; the outer Codex workspace contains local setup tools.
 
 Never upload `.env`, `.data/`, `node_modules/`, or database binaries. Keep the upstream attribution in the repository.
 
@@ -35,7 +35,7 @@ Choose **New → Web Service**, connect the repository, and use:
 | Setting | Value |
 |---|---|
 | Language | Node |
-| Branch | `REACT-PORT` |
+| Branch | `main` (after merging the migration) |
 | Root directory | Blank when this application is the repository root |
 | Build command | `npm ci --include=dev --ignore-scripts && npm run build` |
 | Start command | `npm start` |
@@ -110,9 +110,9 @@ Render's free web services sleep after about 15 minutes without traffic. While a
 
 ## 8. When a push does not deploy
 
-`render.yaml` sets `branch: REACT-PORT` and `autoDeployTrigger: commit`, but the Render dashboard decides what actually happens:
+`render.yaml` sets `branch: main` and `autoDeployTrigger: commit`, but the Render dashboard decides what actually happens:
 
 1. **Manual Deploy → Deploy latest commit** updates the site immediately and shows whether the build succeeds.
 2. **Events:** “Deploy failed” entries mean pushes are detected but the build or health check fails; open that deploy's log.
-3. **Settings → Build & Deploy:** the repository must be the one you push to, branch `REACT-PORT`, and Auto-Deploy *On Commit*. Dashboard settings override `render.yaml` unless the service was created from the Blueprint.
+3. **Settings → Build & Deploy:** the repository must be the one you push to, branch `main`, and Auto-Deploy *On Commit*. Set the build command to `npm ci --include=dev --ignore-scripts && npm run build`. Dashboard settings override `render.yaml` unless the service was created from the Blueprint.
 4. **GitHub access:** Render's GitHub app must be installed with access to the repository (GitHub → Settings → Applications → Render). Without it, Render never sees new commits.

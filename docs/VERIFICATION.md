@@ -1,11 +1,12 @@
 # Verification
 
-Latest checks: Windows with Node.js 24.19.0 and real MongoDB on 28 October 2026. The preceding version was also checked on Linux with Node.js 26 after adding visibility, contests and the new feed.
+Latest checks: React migration on Windows with Node.js 24.19.0 and disposable MongoDB on 29 October 2026.
 
 ## Automated checks
 
-- `npm test`: **41 passed, 0 failed**. Uses a separate disposable MongoDB database.
-- `npm run check`: **47 JavaScript modules** passed syntax checks.
+- `npm test`: **42 passed, 0 failed**. Uses a separate disposable MongoDB database.
+- `npm run check`: **44 JavaScript modules** passed syntax checks; JSX is compiled by the production Vite build.
+- `npm run build`: React production assets and lazy page chunks built successfully.
 - `npm audit --omit=dev --audit-level=moderate`: **0 vulnerabilities** after pinning ExcelJS's compatible UUID dependency to its patched release.
 
 Coverage includes:
