@@ -1,0 +1,8 @@
+simulation: react-port
+routing: path
+mocks:
+  - name: LeetCode fixture
+    routeKey: leetcode
+    origin:
+      - leetcode.com
+    path: postman/mocks/leetcode
