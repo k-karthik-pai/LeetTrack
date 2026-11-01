@@ -1,0 +1,11 @@
+version: 1
+name: LeetCode fixture
+slug: leetcode
+protocol: http
+port: 4911
+origin: leetcode.com
+interceptRequests: true
+scenarios:
+  - name: default
+    path: ./default.js
+    default: true

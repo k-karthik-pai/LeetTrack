@@ -1,0 +1,28 @@
+/* React owns the markup and interactions; these rules keep shared primitives consistent. */
+.avatar { display: inline-flex !important; align-items: center; justify-content: center; text-align: center; flex: 0 0 auto; line-height: 1; padding: 0; }
+.student-cell .avatar { display: inline-flex !important; align-items: center; justify-content: center; }
+.student-cell .student-info { display: flex; flex-direction: column; align-items: flex-start; gap: 4px; min-width: 0; }
+.student-info strong { overflow-wrap: anywhere; }
+.student-cell > .student-info > small { display: block; }
+.student-info .leetcode-handle { display: block; }
+.full-width { grid-column: 1 / -1; }
+button.full-width { width: 100%; text-align: left; }
+.panel-inset { padding: 20px; }
+.profile-heading { margin-bottom: 22px; }
+.profile-heading .profile-head { margin: 0; }
+.empty .empty-description { display: block; max-width: 440px; margin-top: 10px; }
+.clean-auth-card .form-actions { padding-top: 8px; }
+.clean-auth-card .form-actions button { width: 100%; padding: 12px; }
+.clean-auth-card .stack { gap: 0; }
+.chat-form { margin-top: 19px; }
+.chat-form .form-actions { padding-top: 0; }
+.group-choices { border: 1px solid var(--line); border-radius: 8px; padding: 14px; }
+.group-choices .check { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+.group-choices input { width: auto; }
+.department-row > .icon { flex-shrink: 0; }
+.department-row > .btn:last-child { margin-left: auto; }
+dialog .form-error { display: block; }
+.code-input, .code-view { font-family: Consolas, monospace; }
+.code-view { white-space: pre-wrap; overflow-wrap: anywhere; }
+.lc-profile-identity .avatar { flex-shrink: 0; }
+@media (max-width: 760px) { .page-head .flex { flex-wrap: wrap; } .student-info { max-width: 220px; } }

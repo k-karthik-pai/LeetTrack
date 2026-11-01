@@ -1,6 +1,6 @@
 # LeetTrack
 
-College LeetCode tracking with an HTML/CSS/JavaScript frontend, Node.js + Express backend, and MongoDB database. Integrates and extends [DSA Rankboard](https://github.com/chaitanya790/dsa-rankboard) and [LeetCode Analyzer](https://github.com/iamvijayvarma/LEETCODE-ANALYZER). See [upstream provenance](docs/UPSTREAM.md) for the actual reused files and changes.
+College LeetCode tracking with a React 19 + Vite frontend, Node.js + Express backend, and MongoDB database. Integrates and extends [DSA Rankboard](https://github.com/chaitanya790/dsa-rankboard) and [LeetCode Analyzer](https://github.com/iamvijayvarma/LEETCODE-ANALYZER). See [upstream provenance](docs/UPSTREAM.md) for the actual reused files and changes.
 
 ## Run locally
 
@@ -9,16 +9,18 @@ Requires **Node.js 24+** and npm. From this folder:
 ```powershell
 npm ci
 Copy-Item .env.example .env
-npm start
+npm run dev
 ```
 
-Open **http://localhost:3000**. Create an account with your name, RVCE email, required LeetCode username, and password. Google users complete a required LeetCode-linking step after sign-in. Statistics load automatically after signup, login, and handle linking. Opening or returning to the app refreshes statistics older than five minutes; visible pages continue checking in the background. A server job also runs at startup and hourly. Failed upstream requests preserve the last saved statistics and display the error.
+Open **http://localhost:5173**. Create an account with your name, RVCE email, required LeetCode username, and password. Google users complete a required LeetCode-linking step after sign-in. Statistics load automatically after signup, login, and handle linking. Opening or returning to the app refreshes statistics older than five minutes; visible pages continue checking in the background. A server job also runs at startup and hourly. Failed upstream requests preserve the last saved statistics and display the error.
 
 **No demo accounts, statistics, submissions, groups, or challenges are seeded.** Each user starts with their own profile. Academic fields are no longer collected or displayed. Existing legacy metadata is preserved. LeetCode handles track public statistics; ownership of a linked handle is not verified.
 
 When `MONGODB_URI` is blank, the development launcher starts a **real MongoDB process** using `mongodb-memory-server` with WiredTiger data stored in `.data/mongo`. Despite the package name, this configuration persists records across restarts. The first run downloads the official MongoDB binary (approximately 600 MB on Windows) and can take several minutes. Subsequent runs use the cached binary. A stable development session secret is also stored under `.data/`.
 
 To use an installed MongoDB or MongoDB Atlas instead, set `MONGODB_URI` in `.env`. The app never substitutes JSON files or browser storage for MongoDB. Keep `.data/` and `.env` out of Git.
+
+For a production build, run `npm run build` before `npm start`. See [React port setup and validation](docs/REACT-PORT.md) for build, OAuth and Render instructions.
 
 ## Administrator setup
 
@@ -38,10 +40,10 @@ The account menu then contains **Admin**. There is no default admin password or 
 Google credentials must belong to your own application. In [Google Cloud](https://developers.google.com/identity/openid-connect/openid-connect), create a Web application OAuth client and register this redirect URI exactly:
 
 ```text
-http://localhost:3000/api/auth/google/callback
+http://localhost:5173/api/auth/google/callback
 ```
 
-Set `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in `.env`, then restart. The Google button appears only when configured. The server validates OAuth state, nonce, ID-token audience and verified email. New Google users complete a dedicated LeetCode linking form before accessing the dashboard. Old, unconfirmed `unknown` links require that step too; their unrelated statistics stay hidden until the student explicitly chooses a profile. The actual `unknown` handle can still be deliberately linked. An existing password account must use password login; Google does not silently take over that account.
+Set `APP_URL=http://localhost:5173`, `GOOGLE_CLIENT_ID` and `GOOGLE_CLIENT_SECRET` in `.env`, then restart. The Google button appears only when configured. The server validates OAuth state, nonce, ID-token audience and verified email. New Google users complete a dedicated LeetCode linking form before accessing the dashboard. Old, unconfirmed `unknown` links require that step too; their unrelated statistics stay hidden until the student explicitly chooses a profile. The actual `unknown` handle can still be deliberately linked. An existing password account must use password login; Google does not silently take over that account.
 
 ## Features
 
@@ -87,7 +89,8 @@ Tests use a separate, disposable MongoDB instance and never populate your develo
 ## Project layout
 
 ```text
-public/                 Vanilla HTML, CSS and JavaScript; Chart.js and Lucide served locally
+client/                 React components, hooks, styles and static assets
+dist/                   Generated production frontend (ignored by Git)
 backend/                Adapted Rankboard User model, routes, auth/profile/social controllers
 server/                 Express setup, MongoDB, groups, challenges, contests, visibility, admin and sync services
 integrations/analyzer/  JavaScript ports of Analyzer provider and ranking modules

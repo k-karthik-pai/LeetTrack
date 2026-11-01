@@ -4,7 +4,7 @@
 
 | Attached requirement | Delivered evidence |
 |---|---|
-| HTML, CSS, JavaScript frontend; Node/Express backend; MongoDB | `public/`, `backend/`, `server/`, `package.json` |
+| React + Vite frontend; Node/Express backend; MongoDB | `client/`, `backend/`, `server/`, `package.json` |
 | Short requirements, stories, wireframes | `docs/REQUIREMENTS.md` |
 | Database design and REST endpoints | `docs/DATABASE.md`, `docs/API.md` |
 | Login/logout and full CRUD on at least one collection | Cookie auth; private groups provide create/read/update/delete |
